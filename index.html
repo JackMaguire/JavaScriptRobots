@@ -31,7 +31,134 @@
   <h1>Robot Game</h1>
   <div class="board"></div>
   <script>
-    // Insert the converted JavaScript code for the Board and Game classes here
+class Board {
+  static WIDTH = 16;
+  static HEIGHT = 16;
+
+  constructor() {
+    this.cells_ = [];
+    for (let w = 0; w < Board.WIDTH; ++w) {
+      this.cells_[w] = [];
+      for (let h = 0; h < Board.HEIGHT; ++h) {
+        this.cells_[w][h] = Occupant.EMPTY;
+      }
+    }
+
+    this.human_position_ = { x: -1, y: -1 };
+    this.robot_positions_ = [];
+    this.num_robots_ = 0;
+    this.num_fires_ = 0;
+  }
+
+  setCell(x, y, value) {
+    this.cells_[x][y] = value;
+  }
+
+  cell(position) {
+    if (position.x < 0 || position.x >= Board.WIDTH || position.y < 0 || position.y >= Board.HEIGHT) {
+      return Occupant.OOB;
+    }
+    return this.cells_[position.x][position.y];
+  }
+
+  isInsideBoard(position) {
+    return position.x >= 0 && position.x < Board.WIDTH && position.y >= 0 && position.y < Board.HEIGHT;
+  }
+
+  moveHumanTo(x, y) {
+    if (this.cell({ x, y }) !== Occupant.EMPTY) {
+      return MoveResult.INVALID_MOVE;
+    }
+
+    this.cells_[this.human_position_.x][this.human_position_.y] = Occupant.EMPTY;
+    this.human_position_ = { x, y };
+    this.cells_[x][y] = Occupant.HUMAN;
+
+    return this.moveRobots1Step();
+  }
+
+  moveRobots1Step() {
+    // Code for move_robots_1_step method
+  }
+
+  placeRandomly(occupant, count) {
+    let placedCount = 0;
+
+    while (placedCount < count) {
+      const x = Math.floor(Math.random() * Board.WIDTH);
+      const y = Math.floor(Math.random() * Board.HEIGHT);
+
+      if (this.cell({ x, y }) === Occupant.EMPTY) {
+        this.cells_[x][y] = occupant;
+
+        if (occupant === Occupant.ROBOT) {
+          this.robot_positions_.push({ x, y });
+          this.num_robots_++;
+        } else if (occupant === Occupant.FIRE) {
+          this.num_fires_++;
+        }
+
+        placedCount++;
+      }
+    }
+  }
+
+  isGameOver() {
+    return this.cell(this.human_position_) !== Occupant.HUMAN;
+  }
+}
+
+class Game {
+  constructor() {
+    this.board_ = new Board();
+    this.moves_ = 0;
+    this.rounds_ = 0;
+  }
+
+  start() {
+    this.board_.placeRandomly(Occupant.HUMAN, 1);
+    this.board_.placeRandomly(Occupant.ROBOT, 6);
+    this.board_.placeRandomly(Occupant.FIRE, 6);
+  }
+
+  makeMove(x, y) {
+    const moveResult = this.board_.moveHumanTo(x, y);
+
+    if (moveResult === MoveResult.INVALID_MOVE) {
+      return MoveResult.INVALID_MOVE;
+    }
+
+    this.moves_++;
+
+    if (moveResult === MoveResult.YOU_LOSE) {
+      return MoveResult.YOU_LOSE;
+    }
+
+    if (moveResult === MoveResult.YOU_WIN_ROUND) {
+      this.rounds_++;
+      this.board_.placeRandomly(Occupant.ROBOT, this.board_.num_robots_ + 2);
+      this.board_.placeRandomly(Occupant.FIRE, this.board_.num_fires_ + 2);
+    }
+
+    return MoveResult.CONTINUE;
+  }
+}
+
+const Occupant = {
+  EMPTY: 0,
+  HUMAN: 1,
+  ROBOT: 2,
+  FIRE: 3,
+  OOB: 4,
+};
+
+const MoveResult = {
+  INVALID_MOVE: 0,
+  CONTINUE: 1,
+  YOU_LOSE: 2,
+  YOU_WIN_ROUND: 3,
+};
+
 
     const boardElement = document.querySelector('.board');
     const cells = [];
