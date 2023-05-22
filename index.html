@@ -156,6 +156,160 @@ init(round) {
   }
 }
 
+  move_is_safe(from, to) {
+    if (to.x < 0 || to.x >= Board.WIDTH || to.y < 0 || to.y >= Board.HEIGHT) {
+      return false;
+    }
+
+    const occupant = this.cell(to);
+    return occupant === Occupant.EMPTY || occupant === Occupant.HUMAN;
+  }
+
+  move_is_cascade_safe(from, to) {
+    if (!this.move_is_safe(from, to)) {
+      return false;
+    }
+
+    for (const robotPos of this.robot_positions_) {
+      if (robotPos.x === to.x && robotPos.y === to.y) {
+        continue;
+      }
+
+      const dx = Math.abs(to.x - robotPos.x);
+      const dy = Math.abs(to.y - robotPos.y);
+      if (dx <= 1 && dy <= 1) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  get_safe_moves(pos) {
+    const moves = [];
+
+    const deltas = [
+      { dx: -1, dy: -1 },
+      { dx: -1, dy: 0 },
+      { dx: -1, dy: 1 },
+      { dx: 0, dy: -1 },
+      { dx: 0, dy: 1 },
+      { dx: 1, dy: -1 },
+      { dx: 1, dy: 0 },
+      { dx: 1, dy: 1 },
+    ];
+
+    for (const delta of deltas) {
+      const newPos = { x: pos.x + delta.dx, y: pos.y + delta.dy };
+      if (this.move_is_safe(pos, newPos)) {
+        moves.push(newPos);
+      }
+    }
+
+    return moves;
+  }
+
+  move_human() {
+    const moves = this.get_safe_moves(this.human_position_);
+    if (moves.length === 0) {
+      return false; // Game over, no safe moves for human
+    }
+
+    const move = moves[Math.floor(Math.random() * moves.length)];
+    this.cells_[this.human_position_.x][this.human_position_.y] = Occupant.EMPTY;
+    this.human_position_ = move;
+    this.cells_[this.human_position_.x][this.human_position_.y] = Occupant.HUMAN;
+
+    return true;
+  }
+
+  move_robots_1_step(human_is_safe = false) {
+    const robot_indices = Array.from({ length: Board.WIDTH }, () =>
+      Array.from({ length: Board.HEIGHT }, () => -1)
+    );
+
+    for (let r = 0; r < this.robot_positions_.length; r++) {
+      const pos = this.robot_positions_[r];
+      this.cells_[pos.x][pos.y] = Occupant.EMPTY;
+
+      pos.x += 1;
+
+      const newPos = { ...pos };
+      if (newPos.x >= Board.WIDTH) newPos.x = Board.WIDTH - 1;
+
+      if (this.cell(newPos) === Occupant.HUMAN && !human_is_safe) {
+        // Robot reached the human, game over
+        return false;
+      }
+
+      if (this.cell(newPos) === Occupant.EMPTY && !robots_to_delete.has(r)) {
+        robot_indices[newPos.x][newPos.y] = r;
+        this.cells_[newPos.x][newPos.y] = Occupant.ROBOT;
+        this.robot_positions_[r] = newPos;
+      } else {
+        robots_to_delete.add(r);
+      }
+    }
+
+    // Remove robots that collided
+    const robots_to_delete = new Set();
+    for (const r of robots_to_delete) {
+      const pos = this.robot_positions_[r];
+      this.cells_[pos.x][pos.y] = Occupant.EMPTY;
+      this.robot_positions_.splice(r, 1);
+    }
+
+    return true;
+  }
+
+  move_robots_to_human() {
+    let steps = 0;
+    while (true) {
+      if (!this.move_robots_1_step()) {
+        // Game over, robot reached the human
+        return steps;
+      }
+      steps++;
+
+      if (this.robot_positions_.length === 0) {
+        // All robots eliminated, game won
+        return -steps;
+      }
+
+      if (!this.move_robots_1_step(true)) {
+        // Game over, robot reached the human but the human is safe
+        return steps;
+      }
+      steps++;
+    }
+  }
+
+  random_x() {
+    return Math.floor(Math.random() * Board.WIDTH);
+  }
+
+  random_y() {
+    return Math.floor(Math.random() * Board.HEIGHT);
+  }
+
+  nrobots_per_round(round) {
+    return Math.floor((Board.WIDTH * Board.HEIGHT) / (round * round));
+  }
+
+  get_stringified_representation() {
+    return JSON.stringify({
+      cells: this.cells_,
+      robot_positions: this.robot_positions_,
+      human_position: this.human_position_,
+    });
+  }
+
+  load_from_stringified_representation(str) {
+    const { cells, robot_positions, human_position } = JSON.parse(str);
+    this.cells_ = cells;
+    this.robot_positions_ = robot_positions;
+    this.human_position_ = human_position;
+  }
   
   setCell(x, y, value) {
     this.cells_[x][y] = value;
