@@ -128,7 +128,7 @@ init(round) {
 
   // ROBOTS
   this.robot_positions_ = [];
-  var robotCount = this.nrobots_per_round(round);
+  var robotCount = nrobots_per_round(round);
   if (this.robot_positions_.length < 100) {
     // Use different algorithm if the robot count is << the number of cells
     for (var i = 0; i < robotCount; i++) {
@@ -259,10 +259,6 @@ init(round) {
 
   random_y() {
     return Math.floor(Math.random() * Board.HEIGHT);
-  }
-
-  nrobots_per_round(round) {
-    return Math.floor((Board.WIDTH * Board.HEIGHT) / (round * round));
   }
 
   get_stringified_representation() {
