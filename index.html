@@ -393,19 +393,19 @@ class RobotsGame {
     switch (key) {
       case 'ArrowUp':
       case 'w':
-        this.move_human(0, 1);
+        const moveResult = this.move_human(0, 1);
         break;
       case 'ArrowDown':
       case 's':
-        this.move_human(0, -1);
+        const moveResult = this.move_human(0, -1);
         break;
       case 'ArrowLeft':
       case 'a':
-        this.move_human(-1, 0);
+        const moveResult = this.move_human(-1, 0);
         break;
       case 'ArrowRight':
       case 'd':
-        this.move_human(1, 0);
+        const moveResult = this.move_human(1, 0);
         break;
     }
 }
