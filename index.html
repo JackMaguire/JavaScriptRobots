@@ -183,6 +183,7 @@ class Game {
     this.board_.placeRandomly(Occupant.HUMAN, 1);
     this.board_.placeRandomly(Occupant.ROBOT, 6);
     this.board_.placeRandomly(Occupant.FIRE, 6);
+    document.addEventListener('keydown', this.handleKeyDown.bind(this));
   }
 
   makeMove(x, y) {
@@ -206,6 +207,29 @@ class Game {
 
     return MoveResult.CONTINUE;
   }
+  
+  // Function to handle keydown events
+  handleKeyDown(event) {
+    const key = event.key;
+
+    switch (key) {
+      case 'ArrowUp':
+      case 'w':
+        this.makeMove(player, 'up');
+        break;
+      case 'ArrowDown':
+      case 's':
+        this.makeMove(player, 'down');
+        break;
+      case 'ArrowLeft':
+      case 'a':
+        this.makeMove(player, 'left');
+        break;
+      case 'ArrowRight':
+      case 'd':
+        this.makeMove(player, 'right');
+        break;
+    }
 }
 
 const Occupant = {
