@@ -172,42 +172,161 @@ move_robots_1_step(human_is_safe) {
   }
 }
 
-class Game {
-  constructor() {
+class RobotsGame {
+  constructor(round = 1, tele = 0) {
     this.board_ = new Board();
-    this.moves_ = 0;
-    this.rounds_ = 0;
+    this.round_ = round;
+    this.n_safe_teleports_remaining_ = tele;
+    this.score_ = 0;
+    this.latest_result_ = MoveResult.CONTINUE;
+
+    this.board_.init(this.round_);
+
+    let expected_score = 0;
+    for (let r = 1; r < this.round_; ++r) {
+      expected_score += nrobots_per_round(r);
+    }
+    this.score_ = expected_score;
   }
 
-  start() {
-    this.board_.placeRandomly(Occupant.HUMAN, 1);
-    this.board_.placeRandomly(Occupant.ROBOT, 6);
-    this.board_.placeRandomly(Occupant.FIRE, 6);
-    document.addEventListener('keydown', this.handleKeyDown.bind(this));
+  load_from_stringified_representation(str, round, n_safe_teles, score) {
+    this.board_.load_from_stringified_representation(str);
+    this.round_ = round;
+    this.n_safe_teleports_remaining_ = n_safe_teles;
+    this.score_ = score;
   }
 
-  makeMove(x, y) {
-    const moveResult = this.board_.moveHumanTo(x, y);
-
-    if (moveResult === MoveResult.INVALID_MOVE) {
-      return MoveResult.INVALID_MOVE;
-    }
-
-    this.moves_++;
-
-    if (moveResult === MoveResult.YOU_LOSE) {
-      return MoveResult.YOU_LOSE;
-    }
-
-    if (moveResult === MoveResult.YOU_WIN_ROUND) {
-      this.rounds_++;
-      this.board_.placeRandomly(Occupant.ROBOT, this.board_.num_robots_ + 2);
-      this.board_.placeRandomly(Occupant.FIRE, this.board_.num_fires_ + 2);
-    }
-
-    return MoveResult.CONTINUE;
+  reset() {
+    this.board_ = new Board();
+    this.round_ = 0;
+    this.n_safe_teleports_remaining_ = 0;
+    this.score_ = 0;
+    this.latest_result_ = MoveResult.CONTINUE;
+    this.new_round();
   }
-  
+
+  get board() {
+    return this.board_;
+  }
+
+  get n_safe_teleports_remaining() {
+    return this.n_safe_teleports_remaining_;
+  }
+
+  get round() {
+    return this.round_;
+  }
+
+  get latest_result() {
+    return this.latest_result_;
+  }
+
+  game_is_over() {
+    return (
+      this.latest_result_ === MoveResult.YOU_WIN_GAME ||
+      this.latest_result_ === MoveResult.YOU_LOSE
+    );
+  }
+
+  get score() {
+    return this.score_;
+  }
+
+  new_round() {
+    let expected_score = 0;
+    for (let r = 1; r <= this.round_; ++r) {
+      expected_score += r * 10;
+    }
+
+    if (this.score_ !== expected_score) {
+      console.log("Expected score is " + expected_score);
+    }
+
+    if (this.round_ === MAX_N_ROUNDS) {
+      this.latest_result_ = MoveResult.YOU_WIN_GAME;
+    } else {
+      this.board_.init(++this.round_);
+      if (sleepsize > 0) {
+        // std::this_thread::sleep_for( std::chrono::milliseconds(sleepsize) );
+        // Sleep functionality not available in JavaScript
+        // You may need to implement an alternative
+      }
+    }
+  }
+
+  cascade(updater) {
+    const n_robots_start = this.board_.n_robots();
+    this.latest_result_ = MoveResult.CONTINUE;
+
+    while (this.latest_result_ === MoveResult.CONTINUE) {
+      this.latest_result_ = this.board_.move_robots_1_step();
+      updater.render(this);
+    }
+
+    if (this.latest_result_ === MoveResult.YOU_WIN_ROUND) {
+      this.score_ += n_robots_start;
+      this.n_safe_teleports_remaining_ += n_robots_start;
+      if (this.n_safe_teleports_remaining_ > 10)
+        this.n_safe_teleports_remaining_ = 10;
+      this.new_round();
+    }
+
+    return (
+      this.latest_result_ === MoveResult.YOU_LOSE ||
+      this.latest_result_ === MoveResult.YOU_WIN_GAME
+    );
+  }
+
+  move_human(dx, dy) {
+    const n_robots_start = this.board_.n_robots();
+    this.latest_result_ = this.board_.move_human(dx, dy);
+    this.score_ += n_robots_start - this.board_.n_robots();
+
+    if (this.latest_result_ === MoveResult.YOU_WIN_ROUND) {
+      this.new_round();
+    }
+
+    return (
+      this.latest_result_ === MoveResult.YOU_LOSE ||
+      this.latest_result_ === MoveResult.YOU_WIN_GAME
+    );
+  }
+
+  danger_tele() {
+    this.latest_result_ = this.board_.teleport(false);
+    if (this.latest_result_ === MoveResult.CONTINUE) {
+      RC_DEBUG_ASSERT(board_.n_robots() > 0);
+    }
+  }
+
+  safe_tele() {
+    this.latest_result_ = this.board_.teleport(true);
+    this.n_safe_teleports_remaining_--;
+  }
+
+  teleport() {
+    const n_robots_start = this.board_.n_robots();
+
+    if (this.n_safe_teleports_remaining_ === 0) {
+      this.danger_tele();
+    } else {
+      this.safe_tele();
+    }
+
+    this.score_ += n_robots_start - this.board_.n_robots();
+
+    if (this.latest_result_ === MoveResult.YOU_WIN_ROUND) {
+      this.new_round();
+    } else if (this.latest_result_ === MoveResult.CONTINUE) {
+      RC_DEBUG_ASSERT(board_.n_robots() > 0);
+    }
+
+    const game_over =
+      this.latest_result_ === MoveResult.YOU_LOSE ||
+      this.latest_result_ === MoveResult.YOU_WIN_GAME;
+    return game_over;
+  }
+
   // Function to handle keydown events
   handleKeyDown(event) {
     const key = event.key;
@@ -215,36 +334,36 @@ class Game {
     switch (key) {
       case 'ArrowUp':
       case 'w':
-        this.makeMove(player, 'up');
+        this.move_human(0, 1);
         break;
       case 'ArrowDown':
       case 's':
-        this.makeMove(player, 'down');
+        this.move_human(0, -1);
         break;
       case 'ArrowLeft':
       case 'a':
-        this.makeMove(player, 'left');
+        this.move_human(-1, 0);
         break;
       case 'ArrowRight':
       case 'd':
-        this.makeMove(player, 'right');
+        this.move_human(1, 0);
         break;
     }
 }
 
 const Occupant = {
   EMPTY: 0,
-  HUMAN: 1,
-  ROBOT: 2,
+  ROBOT: 1,
+  HUMAN: 2,
   FIRE: 3,
   OOB: 4,
 };
 
 const MoveResult = {
-  INVALID_MOVE: 0,
-  CONTINUE: 1,
-  YOU_LOSE: 2,
-  YOU_WIN_ROUND: 3,
+  CONTINUE: 0,
+  YOU_LOSE: 1,
+  YOU_WIN_ROUND: 2,
+  YOU_WIN_GAME: 3,
 };
 
 
