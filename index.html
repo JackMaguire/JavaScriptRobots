@@ -107,8 +107,56 @@ class Board {
     this.robot_positions_ = [];
     this.num_robots_ = 0;
     this.num_fires_ = 0;
+    this.init( 1 );
   }
 
+init(round) {
+  // RESET
+  this.clear_board();
+
+  // HUMAN
+  this.human_position_ = STARTING_POSITION;
+  this.cell(this.human_position_) = Occupant.HUMAN;
+
+  // ROBOTS
+  this.robot_positions_ = [];
+  var robotCount = this.nrobots_per_round(round);
+  if (this.robot_positions_.length < 100) {
+    // Use different algorithm if the robot count is << the number of cells
+    for (var i = 0; i < robotCount; i++) {
+      var robot = { x: random_x(), y: random_y() };
+      while (this.cell(robot) != Occupant.EMPTY) {
+        robot.x = random_x();
+        robot.y = random_y();
+      }
+      this.robot_positions_.push(robot);
+      this.cell(robot) = Occupant.ROBOT;
+    }
+  } else {
+    // This can be very constexpr
+    var empty_positions = [];
+    var totalCells = HEIGHT * WIDTH;
+    empty_positions.reserve(totalCells - 1);
+    for (var w = 0; w < WIDTH; w++) {
+      for (var h = 0; h < HEIGHT; h++) {
+        var p = { x: w, y: h };
+        if (p != STARTING_POSITION) {
+          empty_positions.push(p);
+        }
+      }
+    }
+
+    var g = new Math.seedrandom();
+    shuffle(empty_positions, g);
+
+    for (var i = 0; i < robotCount; i++) {
+      this.robot_positions_[i] = empty_positions[i];
+      this.cell(this.robot_positions_[i]) = Occupant.ROBOT;
+    }
+  }
+}
+
+  
   setCell(x, y, value) {
     this.cells_[x][y] = value;
   }
