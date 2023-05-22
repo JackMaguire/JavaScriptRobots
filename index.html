@@ -31,9 +31,68 @@
   <h1>Robot Game</h1>
   <div class="board"></div>
   <script>
+    
+   class Position {
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+  }
+
+  isEqual(o) {
+    return this.x === o.x && this.y === o.y;
+  }
+
+  isNotEqual(o) {
+    return !this.isEqual(o);
+  }
+
+  add(o) {
+    return new Position(this.x + o.x, this.y + o.y);
+  }
+
+  subtract(o) {
+    return new Position(this.x - o.x, this.y - o.y);
+  }
+
+  addValue(val) {
+    return new Position(this.x + val, this.y + val);
+  }
+
+  subtractValue(val) {
+    return new Position(this.x - val, this.y - val);
+  }
+
+  multiply(val) {
+    return new Position(this.x * val, this.y * val);
+  }
+
+  divide(val) {
+    return new Position(this.x / val, this.y / val);
+  }
+
+  distance(o) {
+    const diff = this.subtract(o);
+    return Math.sqrt(diff.x * diff.x + diff.y * diff.y);
+  }
+
+  distanceSquared(o) {
+    const diff = this.subtract(o);
+    return diff.x * diff.x + diff.y * diff.y;
+  }
+
+  manhattanDistance(o) {
+    return Math.abs(this.x - o.x) + Math.abs(this.y - o.y);
+  }
+
+  static create(x, y) {
+    return new Position(x, y);
+  }
+}
+
+    
 class Board {
-  static WIDTH = 16;
-  static HEIGHT = 16;
+  static WIDTH = 45;
+  static HEIGHT = 30;
 
   constructor() {
     this.cells_ = [];
