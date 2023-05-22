@@ -32,6 +32,14 @@
   <div class="board"></div>
   <script>
     
+    function nrobots_per_round( round ){
+       return round * 10;
+    }
+    
+    const MAX_N_ROUNDS = 66;
+    const MAX_N_ROBOTS = nrobots_per_round( MAX_N_ROUNDS );
+    const NOccupantTypes = 5;
+    
    class Position {
   constructor(x, y) {
     this.x = x;
