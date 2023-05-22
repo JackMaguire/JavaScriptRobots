@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Robot Game</title>
+  <style>
+    .board {
+      display: grid;
+      grid-template-columns: repeat(16, 1fr);
+      grid-template-rows: repeat(16, 1fr);
+      gap: 2px;
+      width: 320px;
+      height: 320px;
+    }
+    .cell {
+      background-color: lightgray;
+      border-radius: 50%;
+      cursor: pointer;
+    }
+    .cell.human {
+      background-color: blue;
+    }
+    .cell.robot {
+      background-color: red;
+    }
+    .cell.fire {
+      background-color: orange;
+    }
+  </style>
+</head>
+<body>
+  <h1>Robot Game</h1>
+  <div class="board"></div>
+  <script>
+    // Insert the converted JavaScript code for the Board and Game classes here
+
+    const boardElement = document.querySelector('.board');
+    const cells = [];
+
+    // Create the cells on the board
+    for (let i = 0; i < Board.WIDTH; i++) {
+      cells[i] = [];
+      for (let j = 0; j < Board.HEIGHT; j++) {
+        const cell = document.createElement('div');
+        cell.classList.add('cell');
+        cell.dataset.x = i;
+        cell.dataset.y = j;
+        boardElement.appendChild(cell);
+        cells[i][j] = cell;
+      }
+    }
+
+    // Initialize and start the game
+    const game = new Game();
+    game.start();
+    renderBoard();
+
+    // Add event listeners to the cells for player interaction
+    cells.forEach((row) => {
+      row.forEach((cell) => {
+        cell.addEventListener('click', () => {
+          const x = parseInt(cell.dataset.x);
+          const y = parseInt(cell.dataset.y);
+          const moveResult = game.makeMove(x, y);
+          renderBoard();
+
+          if (moveResult === MoveResult.YOU_LOSE) {
+            alert('Game over! You lost.');
+          } else if (moveResult === MoveResult.YOU_WIN_ROUND) {
+            alert('You won the round!');
+          }
+        });
+      });
+    });
+
+    // Function to render the current state of the board
+    function renderBoard() {
+      const board = game.board_;
+
+      for (let i = 0; i < Board.WIDTH; i++) {
+        for (let j = 0; j < Board.HEIGHT; j++) {
+          const cell = cells[i][j];
+          cell.className = 'cell';
+
+          switch (board.cell({ x: i, y: j })) {
+            case Occupant.HUMAN:
+              cell.classList.add('human');
+              break;
+            case Occupant.ROBOT:
+              cell.classList.add('robot');
+              break;
+            case Occupant.FIRE:
+              cell.classList.add('fire');
+              break;
+          }
+        }
+      }
+    }
+  </script>
+</body>
+</html>
