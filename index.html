@@ -132,10 +132,10 @@ init(round) {
   if (this.robot_positions_.length < 100) {
     // Use different algorithm if the robot count is << the number of cells
     for (var i = 0; i < robotCount; i++) {
-      var robot = { x: random_x(), y: random_y() };
+      var robot = { x: this.random_x(), y: this.random_y() };
       while (this.cell(robot) != Occupant.EMPTY) {
-        robot.x = random_x();
-        robot.y = random_y();
+        robot.x = this.random_x();
+        robot.y = this.random_y();
       }
       this.robot_positions_.push(robot);
       this.cell(robot) = Occupant.ROBOT;
