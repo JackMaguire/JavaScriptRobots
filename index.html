@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!DOCTYPE html>A
 <html>
   <head>
     <title>Robot Game</title>
@@ -30,7 +30,16 @@
   <body>
     <h1>Robot Game</h1>
     <div class="board"></div>
+    <div id="game-container">
+      <canvas id="canvas" width="1125" height="750"></canvas>
+    </div>
     <script>
+      const canvas_ = document.getElementById('canvas');
+      const ctx_ = canvas_.getContext('2d');
+      const gridColor_ = '#EEE';
+      const humanColor_ = '#33E';
+      const fireColor_ = '#333';
+      const robotColor_ = '#E33';
       class GameOverBool extends Boolean {}
 
       function nrobots_per_round(round) {
@@ -125,14 +134,14 @@
 	  static WIDTH = 45;
 	  static HEIGHT = 30;
 
-	  constructor() {
+	  constructor( round ) {
 	      this.cells_ = new Array(Board.WIDTH);
 	      for (let i = 0; i < Board.WIDTH; i++) {
 		  this.cells_[i] = new Array(Board.HEIGHT).fill(Occupant.EMPTY);
 	      }
 	      this.robot_positions_ = [];
 	      this.human_position_ = STARTING_POSITION;
-	      this.init_board(1);
+	      this.init_board( round );
 	  }
 
 	  clear_board() {
@@ -190,6 +199,10 @@
 
 	  cell(p) {
 	      return this.cells_[p.x][p.y];
+	  }
+
+	  cellxy(x,y) {
+	      return this.cells_[x][y];
 	  }
 
 	  setCell(p, value) {
@@ -414,9 +427,133 @@
 
 
       }
+
+      function drawBoard( board ) {
+	  ctx_.clearRect(0, 0, canvas_.width, canvas_.height);
+	  grid_size = 25;
+	  grid_size_over_2 = grid_size/2;
+	  twopi = 2*Math.PI;
+
+	  // GRID
+	  {
+	      use_c1 = false;
+	      for( let i = 0; i < Board.WIDTH; ++i ){
+		  for( let j = 0; j < Board.HEIGHT; ++j ){
+		      use_c1 = !use_c1;
+		      if( ! use_c1 ){
+			  ctx_.fillStyle = gridColor_;
+			  x = i*grid_size
+			  y = (Board.HEIGHT-j)*grid_size
+			  ctx_.fillRect(x, y, grid_size, grid_size)
+		      }
+
+		      function draw_elements(){
+			  x = i * grid_size + grid_size_over_2;
+			  y = (Board.HEIGHT-j) * grid_size + grid_size_over_2;
+			  ctx_.beginPath();
+			  ctx_.arc( x, y, grid_size_over_2, twopi, false );
+			  ctx_.fill();
+			  ctx_.stroke();
+		      }
+
+		      //Draw Element
+		      switch (board.cellxy(i,j)) {
+		      case Occupant.EMPTY:
+			  break;
+		      case Occupant.OOB:
+			  break;
+		      case Occupant.ROBOT:
+			  ctx_.fillStyle = robotColor_;
+			  draw_elements();
+			  break;
+		      case Occupant.HUMAN:
+			  ctx_.fillStyle = humanColor_;
+			  draw_elements();
+			  break;
+		      case Occupant.FIRE:
+			  ctx_.fillStyle = fireColor_;
+			  draw_elements();
+			  break;
+		      }
+		      
+		  }
+		  use_c1 = !use_c1;
+	      }
+	  }
+
+      }
+
       // Usage example:
-      const board = new Board();
-      console.log(board.n_robots()); // Output: 0
+      let round_ = 1;
+      const board_ = new Board( round_ );
+      console.log(board_.n_robots());
+      drawBoard( board_ );
+
+      document.addEventListener('keydown', (event) => {
+	  const key = event.key.toLowerCase();
+	  let nextPosition;
+
+	  outcome = MoveResult.CONTINUE;
+	  switch (key) {
+          case 'q':
+	      outcome = board_.move_human( -1, 1 );
+              break;
+          case 'arrowup':
+          case 'w':
+	      outcome = board_.move_human( 0, 1 );
+              break;
+          case 'e':
+	      outcome = board_.move_human( 1, 1 );
+              break;
+          case 'arrowleft':
+          case 'a':
+	      outcome = board_.move_human( -1, 0 );
+              break;
+          case 's':
+	      outcome = board_.move_human( 0, 0 );
+              break;
+          case 'arrowright':
+          case 'd':
+	      outcome = board_.move_human( 1, 0 );
+              break;
+          case 'z':
+	      outcome = board_.move_human( -1, -1 );
+              break;
+          case 'arrowdown':
+          case 'x':
+	      outcome = board_.move_human( 0, -1 );
+              break;
+          case 'c':
+	      outcome = board_.move_human( 1, -1 );
+              break;
+          case 't':
+	      outcome = board_.teleport( false );
+              break;
+          default:
+              return;
+	  }
+
+	  switch( outcome ){
+	  case MoveResult.CONTINUE:
+	  default:
+	      break;
+	  case MoveResult.YOU_LOSE:
+	      alert( "YOU LOSE" );
+	      break;
+	  case MoveResult.YOU_WIN_ROUND:
+	      if ( round_ < MAX_N_ROUNDS ){
+		  ++round_;
+		  board_.init_board( round_ );
+	      }
+	      break;
+	  case MoveResult.YOU_WIN_GAME:
+	      alert( "YOU WIN" );
+	      break;
+	  }
+
+	  drawBoard( board_ );
+      });
+
     </script>
   </body>
 </html>
