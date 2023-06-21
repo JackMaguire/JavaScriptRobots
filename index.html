@@ -1,660 +1,422 @@
 <!DOCTYPE html>
 <html>
-<head>
-  <title>Robot Game</title>
-  <style>
-    .board {
-      display: grid;
-      grid-template-columns: repeat(16, 1fr);
-      grid-template-rows: repeat(16, 1fr);
-      gap: 2px;
-      width: 320px;
-      height: 320px;
-    }
-    .cell {
-      background-color: lightgray;
-      border-radius: 50%;
-      cursor: pointer;
-    }
-    .cell.human {
-      background-color: blue;
-    }
-    .cell.robot {
-      background-color: red;
-    }
-    .cell.fire {
-      background-color: orange;
-    }
-  </style>
-</head>
-<body>
-  <h1>Robot Game</h1>
-  <div class="board"></div>
-  <script>
-    
-    function nrobots_per_round( round ){
-       return round * 10;
-    }
-    
-    const MAX_N_ROUNDS = 66;
-    const MAX_N_ROBOTS = nrobots_per_round( MAX_N_ROUNDS );
-    const NOccupantTypes = 5;
-    
-   class Position {
-  constructor(x, y) {
-    this.x = x;
-    this.y = y;
-  }
-
-  isEqual(o) {
-    return this.x === o.x && this.y === o.y;
-  }
-
-  isNotEqual(o) {
-    return !this.isEqual(o);
-  }
-
-  add(o) {
-    return new Position(this.x + o.x, this.y + o.y);
-  }
-
-  subtract(o) {
-    return new Position(this.x - o.x, this.y - o.y);
-  }
-
-  addValue(val) {
-    return new Position(this.x + val, this.y + val);
-  }
-
-  subtractValue(val) {
-    return new Position(this.x - val, this.y - val);
-  }
-
-  multiply(val) {
-    return new Position(this.x * val, this.y * val);
-  }
-
-  divide(val) {
-    return new Position(this.x / val, this.y / val);
-  }
-
-  distance(o) {
-    const diff = this.subtract(o);
-    return Math.sqrt(diff.x * diff.x + diff.y * diff.y);
-  }
-
-  distanceSquared(o) {
-    const diff = this.subtract(o);
-    return diff.x * diff.x + diff.y * diff.y;
-  }
-
-  manhattanDistance(o) {
-    return Math.abs(this.x - o.x) + Math.abs(this.y - o.y);
-  }
-
-  static create(x, y) {
-    return new Position(x, y);
-  }
-}
-
-    
-class Board {
-  static WIDTH = 45;
-  static HEIGHT = 30;
-
-  constructor() {
-    this.cells_ = [];
-    for (let w = 0; w < Board.WIDTH; ++w) {
-      this.cells_[w] = [];
-      for (let h = 0; h < Board.HEIGHT; ++h) {
-        this.cells_[w][h] = Occupant.EMPTY;
+  <head>
+    <title>Robot Game</title>
+    <style>
+      .board {
+	  display: grid;
+	  grid-template-columns: repeat(16, 1fr);
+	  grid-template-rows: repeat(16, 1fr);
+	  gap: 2px;
+	  width: 320px;
+	  height: 320px;
       }
-    }
-
-    this.human_position_ = { x: -1, y: -1 };
-    this.robot_positions_ = [];
-    this.num_robots_ = 0;
-    this.num_fires_ = 0;
-    this.init( 1 );
-  }
-
-init(round) {
-  // RESET
-  this.clear_board();
-
-  // HUMAN
-  this.human_position_ = STARTING_POSITION;
-  this.cell(this.human_position_) = Occupant.HUMAN;
-
-  // ROBOTS
-  this.robot_positions_ = [];
-  var robotCount = nrobots_per_round(round);
-  if (this.robot_positions_.length < 100) {
-    // Use different algorithm if the robot count is << the number of cells
-    for (var i = 0; i < robotCount; i++) {
-      var robot = { x: this.random_x(), y: this.random_y() };
-      while (this.cell(robot) != Occupant.EMPTY) {
-        robot.x = this.random_x();
-        robot.y = this.random_y();
+      .cell {
+	  background-color: lightgray;
+	  border-radius: 50%;
+	  cursor: pointer;
       }
-      this.robot_positions_.push(robot);
-      this.cell(robot) = Occupant.ROBOT;
-    }
-  } else {
-    // This can be very constexpr
-    var empty_positions = [];
-    var totalCells = HEIGHT * WIDTH;
-    empty_positions.reserve(totalCells - 1);
-    for (var w = 0; w < WIDTH; w++) {
-      for (var h = 0; h < HEIGHT; h++) {
-        var p = { x: w, y: h };
-        if (p != STARTING_POSITION) {
-          empty_positions.push(p);
-        }
+      .cell.human {
+	  background-color: blue;
       }
-    }
+      .cell.robot {
+	  background-color: red;
+      }
+      .cell.fire {
+	  background-color: orange;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Robot Game</h1>
+    <div class="board"></div>
+    <script>
+      class GameOverBool extends Boolean {}
 
-    var g = new Math.seedrandom();
-    shuffle(empty_positions, g);
-
-    for (var i = 0; i < robotCount; i++) {
-      this.robot_positions_[i] = empty_positions[i];
-      this.cell(this.robot_positions_[i]) = Occupant.ROBOT;
-    }
-  }
-}
-
-  move_is_safe(from, to) {
-    if (to.x < 0 || to.x >= Board.WIDTH || to.y < 0 || to.y >= Board.HEIGHT) {
-      return false;
-    }
-
-    const occupant = this.cell(to);
-    return occupant === Occupant.EMPTY || occupant === Occupant.HUMAN;
-  }
-
-  move_is_cascade_safe(from, to) {
-    if (!this.move_is_safe(from, to)) {
-      return false;
-    }
-
-    for (const robotPos of this.robot_positions_) {
-      if (robotPos.x === to.x && robotPos.y === to.y) {
-        continue;
+      function nrobots_per_round(round) {
+	  return round * 10;
       }
 
-      const dx = Math.abs(to.x - robotPos.x);
-      const dy = Math.abs(to.y - robotPos.y);
-      if (dx <= 1 && dy <= 1) {
-        return false;
-      }
-    }
+      const MAX_N_ROUNDS = 66;
+      const MAX_N_ROBOTS = nrobots_per_round(MAX_N_ROUNDS);
 
-    return true;
-  }
+      const Occupant = {
+	  EMPTY: 0,
+	  ROBOT: 1,
+	  HUMAN: 2,
+	  FIRE: 3,
+	  OOB: 4
+      };
 
-  get_safe_moves(pos) {
-    const moves = [];
+      const NOccupantTypes = 5;
 
-    const deltas = [
-      { dx: -1, dy: -1 },
-      { dx: -1, dy: 0 },
-      { dx: -1, dy: 1 },
-      { dx: 0, dy: -1 },
-      { dx: 0, dy: 1 },
-      { dx: 1, dy: -1 },
-      { dx: 1, dy: 0 },
-      { dx: 1, dy: 1 },
-    ];
+      const MoveResult = {
+	  CONTINUE: 0,
+	  YOU_LOSE: 1,
+	  YOU_WIN_ROUND: 2,
+	  YOU_WIN_GAME: 3
+      };
 
-    for (const delta of deltas) {
-      const newPos = { x: pos.x + delta.dx, y: pos.y + delta.dy };
-      if (this.move_is_safe(pos, newPos)) {
-        moves.push(newPos);
-      }
-    }
-
-    return moves;
-  }
-
-  move_human() {
-    const moves = this.get_safe_moves(this.human_position_);
-    if (moves.length === 0) {
-      return false; // Game over, no safe moves for human
-    }
-
-    const move = moves[Math.floor(Math.random() * moves.length)];
-    this.cells_[this.human_position_.x][this.human_position_.y] = Occupant.EMPTY;
-    this.human_position_ = move;
-    this.cells_[this.human_position_.x][this.human_position_.y] = Occupant.HUMAN;
-
-    return true;
-  }
-  
-  move_robots_to_human() {
-    let steps = 0;
-    while (true) {
-      if (!this.move_robots_1_step()) {
-        // Game over, robot reached the human
-        return steps;
-      }
-      steps++;
-
-      if (this.robot_positions_.length === 0) {
-        // All robots eliminated, game won
-        return -steps;
+      function shuffleArray(array) {
+	  for (var i = array.length - 1; i > 0; i--) {
+              var j = Math.floor(Math.random() * (i + 1));
+              var temp = array[i];
+              array[i] = array[j];
+              array[j] = temp;
+	  }
       }
 
-      if (!this.move_robots_1_step(true)) {
-        // Game over, robot reached the human but the human is safe
-        return steps;
+      class Position {
+	  constructor(x, y) {
+	      this.x = x;
+	      this.y = y;
+	  }
+
+	  isEqual(o) {
+	      return this.x === o.x && this.y === o.y;
+	  }
+
+	  isNotEqual(o) {
+	      return !this.isEqual(o);
+	  }
+
+	  add(o) {
+	      return new Position(this.x + o.x, this.y + o.y);
+	  }
+
+	  subtract(o) {
+	      return new Position(this.x - o.x, this.y - o.y);
+	  }
+
+	  addValue(val) {
+	      return new Position(this.x + val, this.y + val);
+	  }
+
+	  subtractValue(val) {
+	      return new Position(this.x - val, this.y - val);
+	  }
+
+	  multiply(val) {
+	      return new Position(this.x * val, this.y * val);
+	  }
+
+	  divide(val) {
+	      return new Position(this.x / val, this.y / val);
+	  }
+
+	  distance(o) {
+	      const diff = this.subtract(o);
+	      return Math.sqrt(diff.x * diff.x + diff.y * diff.y);
+	  }
+
+	  distanceSquared(o) {
+	      const diff = this.subtract(o);
+	      return diff.x * diff.x + diff.y * diff.y;
+	  }
+
+	  manhattanDistance(o) {
+	      return Math.abs(this.x - o.x) + Math.abs(this.y - o.y);
+	  }
       }
-      steps++;
-    }
-  }
 
-  random_x() {
-    return Math.floor(Math.random() * Board.WIDTH);
-  }
+      const STARTING_POSITION = new Position(22, 15);
 
-  random_y() {
-    return Math.floor(Math.random() * Board.HEIGHT);
-  }
+      class Board {
+	  static WIDTH = 45;
+	  static HEIGHT = 30;
 
-  get_stringified_representation() {
-    return JSON.stringify({
-      cells: this.cells_,
-      robot_positions: this.robot_positions_,
-      human_position: this.human_position_,
-    });
-  }
+	  constructor() {
+	      this.cells_ = new Array(Board.WIDTH);
+	      for (let i = 0; i < Board.WIDTH; i++) {
+		  this.cells_[i] = new Array(Board.HEIGHT).fill(Occupant.EMPTY);
+	      }
+	      this.robot_positions_ = [];
+	      this.human_position_ = STARTING_POSITION;
+	      this.init_board(1);
+	  }
 
-  load_from_stringified_representation(str) {
-    const { cells, robot_positions, human_position } = JSON.parse(str);
-    this.cells_ = cells;
-    this.robot_positions_ = robot_positions;
-    this.human_position_ = human_position;
-  }
-  
-  setCell(x, y, value) {
-    this.cells_[x][y] = value;
-  }
+	  clear_board() {
+	      for (let arr of this.cells_) {
+		  arr.fill(Occupant.EMPTY);
+	      }
+	  }
 
-  cell(position) {
-    if (position.x < 0 || position.x >= Board.WIDTH || position.y < 0 || position.y >= Board.HEIGHT) {
-      return Occupant.OOB;
-    }
-    return this.cells_[position.x][position.y];
-  }
+	  init_board(round) {
+	      // RESET
+	      this.clear_board();
 
-  isInsideBoard(position) {
-    return position.x >= 0 && position.x < Board.WIDTH && position.y >= 0 && position.y < Board.HEIGHT;
-  }
+	      // HUMAN
+	      this.human_position_ = STARTING_POSITION;
+	      this.setCell(this.human_position_, Occupant.HUMAN );
 
-  moveHumanTo(x, y) {
-    if (this.cell({ x, y }) !== Occupant.EMPTY) {
-      return MoveResult.INVALID_MOVE;
-    }
+	      // ROBOTS
+	      //this.robot_positions_.resize(nrobots_per_round(round));
+	      this.robot_positions_ = []
+	      for (let i = 0; i < nrobots_per_round(round); i++){
+		  this.robot_positions_.push( new Position(0,0) )
+	      }
 
-    this.cells_[this.human_position_.x][this.human_position_.y] = Occupant.EMPTY;
-    this.human_position_ = { x, y };
-    this.cells_[x][y] = Occupant.HUMAN;
+	      if (this.robot_positions_.length < 100) {
+		  // Use different algorithm if the robot count is << the number of cells
+		  for (let i = 0; i < this.robot_positions_.length; i++) {
+		      let robot = this.robot_positions_[i];
+		      do {
+			  robot.x = this.random_x();
+			  robot.y = this.random_y();
+		      } while (this.cell(robot) != Occupant.EMPTY);
 
-    return this.moveRobots1Step();
-  }
+		      this.setCell(robot, Occupant.ROBOT );
+		  }
+	      } else {
+		  // This can be very constexpr
+		  let empty_positions = [];
+		  for (let w = 0; w < Board.WIDTH; ++w) {
+		      for (let h = 0; h < Board.HEIGHT; ++h) {
+			  let p = { x: w, y: h };
+			  if (!isSamePosition(p, STARTING_POSITION)) {
+			      empty_positions.push(p);
+			  }
+		      }
+		  }
 
-move_robots_1_step(human_is_safe) {
-  // Clear robots from the board
-  for (let w = 0; w < Board.WIDTH; ++w) {
-    for (let h = 0; h < Board.HEIGHT; ++h) {
-      if (this.cells_[w][h] === Occupant.ROBOT) {
-        this.cells_[w][h] = Occupant.EMPTY;
+		  shuffleArray(empty_positions);
+
+		  for (let i = 0; i < this.robot_positions_.length; ++i) {
+		      this.robot_positions_[i] = empty_positions[i];
+		      this.setCell(this.robot_positions_[i], Occupant.ROBOT );
+		  }
+	      }
+	  }
+
+	  cell(p) {
+	      return this.cells_[p.x][p.y];
+	  }
+
+	  setCell(p, value) {
+	      this.cells_[p.x][p.y] = value;
+	  }
+
+	  n_robots() {
+	      return this.robot_positions_.length;
+	  }
+
+	  n_robots_uint() {
+	      return this.robot_positions_.length;
+	  }
+
+	  human_position() {
+	      return this.human_position_;
+	  }
+
+	  robots() {
+	      return this.robot_positions_;
+	  }
+
+	  cell_is_safe_for_teleport(p) {
+	      for (let x = p.x - 1; x <= p.x + 1; x++) {
+		  if (x < 0 || x >= Board.WIDTH) continue;
+		  for (let y = p.y - 1; y <= p.y + 1; y++) {
+		      if (y < 0 || y >= Board.HEIGHT) continue;
+		      if (this.cell(new Position(x, y)) === Occupant.ROBOT) return false;
+		  }
+	      }
+
+	      return this.cell(p) === Occupant.EMPTY || this.cell(p) === Occupant.HUMAN;
+	  }
+
+	  teleport(safe) {
+	      this.setCell(this.human_position_, Occupant.EMPTY);
+
+	      if (safe) {
+		  this.human_position_ = this.find_open_space();
+	      } else {
+		  this.human_position_.x = this.random_x();
+		  this.human_position_.y = this.random_y();
+	      }
+
+	      this.setCell(this.human_position_, Occupant.HUMAN);
+	      return this.move_robots_1_step(safe);
+	  }
+
+	  move_human(dx, dy) {
+	      this.setCell(this.human_position_, Occupant.EMPTY);
+
+	      this.human_position_.x += dx;
+	      if (this.human_position_.x < 0) this.human_position_.x = 0;
+	      if (this.human_position_.x >= Board.WIDTH) this.human_position_.x -= 1;
+
+	      this.human_position_.y += dy;
+	      if (this.human_position_.y < 0) this.human_position_.y = 0;
+	      if (this.human_position_.y >= Board.HEIGHT) this.human_position_.y -= 1;
+
+	      if (this.cell(this.human_position_) === Occupant.FIRE)
+		  return MoveResult.YOU_LOSE;
+	      if (this.cell(this.human_position_) === Occupant.ROBOT)
+		  return MoveResult.YOU_LOSE;
+
+	      this.setCell(this.human_position_, Occupant.HUMAN);
+
+	      return this.move_robots_1_step();
+	  }
+
+	  move_is_safe(dx, dy) {
+	      const copy = new Board();
+	      const result = copy.move_human(dx, dy);
+	      return result !== MoveResult.YOU_LOSE;
+	  }
+
+	  move_is_cascade_safe(dx, dy) {
+	      const copy = new Board();
+	      let result = copy.move_human(dx, dy);
+	      while (result === MoveResult.CONTINUE) {
+		  result = copy.move_human(0, 0);
+	      }
+	      return result !== MoveResult.YOU_LOSE;
+	  }
+
+	  move_is_cascade_safe(dx, dy, nremaining) {
+	      const copy = new Board();
+	      let result = copy.move_human(dx, dy);
+	      while (result === MoveResult.CONTINUE) {
+		  result = copy.move_human(0, 0);
+	      }
+	      nremaining = copy.n_robots();
+	      return result !== MoveResult.YOU_LOSE;
+	  }
+
+	  static position_is_in_bounds(p) {
+	      return (
+		  p.x >= 0 &&
+		      p.x < Board.WIDTH &&
+		      p.y >= 0 &&
+		      p.y < Board.HEIGHT
+	      );
+	  }
+
+	  static position_is_in_bounds(x, y) {
+	      return (
+		  x >= 0 &&
+		      x < Board.WIDTH &&
+		      y >= 0 &&
+		      y < Board.HEIGHT
+	      );
+	  }
+
+	  random_x() {
+	      return Math.floor(Math.random() * Board.WIDTH);
+	  }
+
+	  random_y() {
+	      return Math.floor(Math.random() * Board.HEIGHT);
+	  }
+
+	  find_open_space(allow_robot_movement = true) {
+	      if (this.robot_positions_.length < 100) {
+		  let openp;
+		  do {
+		      openp = new Position(this.random_x(), this.random_y());
+		  } while (this.cell(openp) !== Occupant.EMPTY);
+		  return openp;
+	      }
+
+	      const empty_positions = [];
+	      const maxEmptyPositions = (Board.HEIGHT * Board.WIDTH) - 1 - this.robot_positions_.length;
+	      for (let w = 0; w < Board.WIDTH; w++) {
+		  for (let h = 0; h < Board.HEIGHT; h++) {
+		      const p = new Position(w, h);
+		      if (allow_robot_movement) {
+			  if (this.cell_is_safe_for_teleport(p)) {
+			      empty_positions.push(p);
+			  }
+		      } else if (this.cell(p) === Occupant.EMPTY) {
+			  empty_positions.push(p);
+		      }
+		  }
+	      }
+
+	      if (empty_positions.length === 0) {
+		  if (allow_robot_movement) {
+		      return this.find_open_space(false);
+		  } else {
+		      console.log("No safe positions even in fallback plan!!");
+		      // This is very unexpected, don't know how to handle it
+		  }
+	      }
+
+	      const randomIndex = Math.floor(Math.random() * empty_positions.length);
+	      return empty_positions[randomIndex];
+	  }
+
+
+	  move_robots_1_step(human_is_safe = false) {
+	      // Clear robots from map
+	      for (let w = 0; w < Board.WIDTH; ++w) {
+		  for (let h = 0; h < Board.HEIGHT; ++h) {
+		      if (this.cells_[w][h] === Occupant.ROBOT) {
+			  this.cells_[w][h] = Occupant.EMPTY;
+		      }
+		  }
+	      }
+
+	      // Some robots will be deleted if they run into each other or into fire
+	      const robots_to_delete = new Set();
+
+	      // Keep temporary track of robots just in case they clash
+	      // Elements are indices in robot_positions_
+	      const robot_indices = Array.from({ length: Board.WIDTH }, () => Array(Board.HEIGHT).fill(-1));
+
+	      for (let r = 0; r < this.robot_positions_.length; ++r) {
+		  let pos = this.robot_positions_[r];
+
+		  if (this.human_position_.x < pos.x) pos.x -= 1;
+		  else if (this.human_position_.x > pos.x) pos.x += 1;
+
+		  if (this.human_position_.y < pos.y) pos.y -= 1;
+		  else if (this.human_position_.y > pos.y) pos.y += 1;
+
+		  if (human_is_safe && pos.x === this.human_position_.x && pos.y === this.human_position_.y) {
+		      // This is rare, but just have the robot take one step to the left or right
+		      if (pos.x === 0) ++pos.x; // Don't go out of bounds
+		      else --pos.x;
+		  }
+
+		  switch (this.cell(pos)) {
+		  case Occupant.EMPTY:
+		      robot_indices[pos.x][pos.y] = r;
+		      this.cells_[pos.x][pos.y] = Occupant.ROBOT;
+		      break;
+		  case Occupant.ROBOT:
+		      const other_robot_ind = robot_indices[pos.x][pos.y];
+		      robots_to_delete.add(other_robot_ind);
+		      robots_to_delete.add(r);
+		      this.cells_[pos.x][pos.y] = Occupant.FIRE;
+		      break;
+		  case Occupant.HUMAN:
+		      return MoveResult.YOU_LOSE;
+		  case Occupant.FIRE:
+		      robots_to_delete.add(r);
+		      break;
+		  case Occupant.OOB:
+		      break;
+		  }
+	      }
+
+	      for (const robotIndex of robots_to_delete) {
+		  this.robot_positions_.splice(robotIndex, 1);
+	      }
+
+	      if (this.robot_positions_.length === 0) {
+		  return MoveResult.YOU_WIN_ROUND;
+	      }
+
+	      return MoveResult.CONTINUE;
+	  }
+
+
       }
-    }
-  }
-
-  // Some robots will be deleted if they collide with each other or with fire
-  const robotsToDelete = new Set();
-
-  // Keep temporary track of robots in case they collide
-  const robotIndices = new Array(Board.WIDTH);
-  for (let i = 0; i < Board.WIDTH; ++i) {
-    robotIndices[i] = new Array(Board.HEIGHT).fill(-1);
-  }
-
-  for (let r = 0; r < this.robot_positions_.length; ++r) {
-    let pos = this.robot_positions_[r];
-
-    if (this.human_position_.x < pos.x) pos.x -= 1;
-    else if (this.human_position_.x > pos.x) pos.x += 1;
-
-    if (this.human_position_.y < pos.y) pos.y -= 1;
-    else if (this.human_position_.y > pos.y) pos.y += 1;
-
-    if (human_is_safe && pos.x === this.human_position_.x && pos.y === this.human_position_.y) {
-      // This is rare, but just have the robot take one step to the left or right
-      if (pos.x === 0) ++pos.x; // Don't go out of bounds
-      else --pos.x;
-    }
-
-    const cellValue = this.cell(pos);
-    switch (cellValue) {
-      case Occupant.EMPTY:
-        robotIndices[pos.x][pos.y] = r;
-        this.cells_[pos.x][pos.y] = Occupant.ROBOT;
-        break;
-      case Occupant.ROBOT:
-        const otherRobotInd = robotIndices[pos.x][pos.y];
-        robotsToDelete.add(otherRobotInd);
-        robotsToDelete.add(r);
-        this.cells_[pos.x][pos.y] = Occupant.FIRE;
-        break;
-      case Occupant.HUMAN:
-        return MoveResult.YOU_LOSE;
-      case Occupant.FIRE:
-        robotsToDelete.add(r);
-        break;
-      case Occupant.OOB:
-        break;
-    }
-  }
-
-  for (const index of robotsToDelete) {
-    this.robot_positions_.splice(index, 1);
-  }
-
-  if (this.robot_positions_.length === 0) {
-    return MoveResult.YOU_WIN_ROUND;
-  }
-
-  return MoveResult.CONTINUE;
-}
-
-
-  placeRandomly(occupant, count) {
-    let placedCount = 0;
-
-    while (placedCount < count) {
-      const x = Math.floor(Math.random() * Board.WIDTH);
-      const y = Math.floor(Math.random() * Board.HEIGHT);
-
-      if (this.cell({ x, y }) === Occupant.EMPTY) {
-        this.cells_[x][y] = occupant;
-
-        if (occupant === Occupant.ROBOT) {
-          this.robot_positions_.push({ x, y });
-          this.num_robots_++;
-        } else if (occupant === Occupant.FIRE) {
-          this.num_fires_++;
-        }
-
-        placedCount++;
-      }
-    }
-  }
-
-  isGameOver() {
-    return this.cell(this.human_position_) !== Occupant.HUMAN;
-  }
-}
-
-class RobotsGame {
-  constructor(round = 1, tele = 0) {
-    this.board_ = new Board();
-    this.round_ = round;
-    this.n_safe_teleports_remaining_ = tele;
-    this.score_ = 0;
-    this.latest_result_ = MoveResult.CONTINUE;
-
-    this.board_.init(this.round_);
-
-    let expected_score = 0;
-    for (let r = 1; r < this.round_; ++r) {
-      expected_score += nrobots_per_round(r);
-    }
-    this.score_ = expected_score;
-  }
-
-  load_from_stringified_representation(str, round, n_safe_teles, score) {
-    this.board_.load_from_stringified_representation(str);
-    this.round_ = round;
-    this.n_safe_teleports_remaining_ = n_safe_teles;
-    this.score_ = score;
-  }
-
-  reset() {
-    this.board_ = new Board();
-    this.round_ = 0;
-    this.n_safe_teleports_remaining_ = 0;
-    this.score_ = 0;
-    this.latest_result_ = MoveResult.CONTINUE;
-    this.new_round();
-  }
-
-  get board() {
-    return this.board_;
-  }
-
-  get n_safe_teleports_remaining() {
-    return this.n_safe_teleports_remaining_;
-  }
-
-  get round() {
-    return this.round_;
-  }
-
-  get latest_result() {
-    return this.latest_result_;
-  }
-
-  game_is_over() {
-    return (
-      this.latest_result_ === MoveResult.YOU_WIN_GAME ||
-      this.latest_result_ === MoveResult.YOU_LOSE
-    );
-  }
-
-  get score() {
-    return this.score_;
-  }
-
-  new_round() {
-    let expected_score = 0;
-    for (let r = 1; r <= this.round_; ++r) {
-      expected_score += r * 10;
-    }
-
-    if (this.score_ !== expected_score) {
-      console.log("Expected score is " + expected_score);
-    }
-
-    if (this.round_ === MAX_N_ROUNDS) {
-      this.latest_result_ = MoveResult.YOU_WIN_GAME;
-    } else {
-      this.board_.init(++this.round_);
-      if (sleepsize > 0) {
-        // std::this_thread::sleep_for( std::chrono::milliseconds(sleepsize) );
-        // Sleep functionality not available in JavaScript
-        // You may need to implement an alternative
-      }
-    }
-  }
-
-  cascade(updater) {
-    const n_robots_start = this.board_.n_robots();
-    this.latest_result_ = MoveResult.CONTINUE;
-
-    while (this.latest_result_ === MoveResult.CONTINUE) {
-      this.latest_result_ = this.board_.move_robots_1_step();
-      updater.render(this);
-    }
-
-    if (this.latest_result_ === MoveResult.YOU_WIN_ROUND) {
-      this.score_ += n_robots_start;
-      this.n_safe_teleports_remaining_ += n_robots_start;
-      if (this.n_safe_teleports_remaining_ > 10)
-        this.n_safe_teleports_remaining_ = 10;
-      this.new_round();
-    }
-
-    return (
-      this.latest_result_ === MoveResult.YOU_LOSE ||
-      this.latest_result_ === MoveResult.YOU_WIN_GAME
-    );
-  }
-
-  move_human(dx, dy) {
-    const n_robots_start = this.board_.n_robots();
-    this.latest_result_ = this.board_.move_human(dx, dy);
-    this.score_ += n_robots_start - this.board_.n_robots();
-
-    if (this.latest_result_ === MoveResult.YOU_WIN_ROUND) {
-      this.new_round();
-    }
-
-    return (
-      this.latest_result_ === MoveResult.YOU_LOSE ||
-      this.latest_result_ === MoveResult.YOU_WIN_GAME
-    );
-  }
-
-  danger_tele() {
-    this.latest_result_ = this.board_.teleport(false);
-    if (this.latest_result_ === MoveResult.CONTINUE) {
-      RC_DEBUG_ASSERT(board_.n_robots() > 0);
-    }
-  }
-
-  safe_tele() {
-    this.latest_result_ = this.board_.teleport(true);
-    this.n_safe_teleports_remaining_--;
-  }
-
-  teleport() {
-    const n_robots_start = this.board_.n_robots();
-
-    if (this.n_safe_teleports_remaining_ === 0) {
-      this.danger_tele();
-    } else {
-      this.safe_tele();
-    }
-
-    this.score_ += n_robots_start - this.board_.n_robots();
-
-    if (this.latest_result_ === MoveResult.YOU_WIN_ROUND) {
-      this.new_round();
-    } else if (this.latest_result_ === MoveResult.CONTINUE) {
-      RC_DEBUG_ASSERT(board_.n_robots() > 0);
-    }
-
-    const game_over =
-      this.latest_result_ === MoveResult.YOU_LOSE ||
-      this.latest_result_ === MoveResult.YOU_WIN_GAME;
-    return game_over;
-  }
-
-  // Function to handle keydown events
-  handleKeyDown(event) {
-    const key = event.key;
-
-    switch (key) {
-      case 'ArrowUp':
-      case 'w':
-        const moveResult1 = this.move_human(0, 1);
-        break;
-      case 'ArrowDown':
-      case 's':
-        const moveResult2 = this.move_human(0, -1);
-        break;
-      case 'ArrowLeft':
-      case 'a':
-        const moveResult3 = this.move_human(-1, 0);
-        break;
-      case 'ArrowRight':
-      case 'd':
-        const moveResult4 = this.move_human(1, 0);
-        break;
-    }
-}
-
-const Occupant = {
-  EMPTY: 0,
-  ROBOT: 1,
-  HUMAN: 2,
-  FIRE: 3,
-  OOB: 4,
-};
-
-const MoveResult = {
-  CONTINUE: 0,
-  YOU_LOSE: 1,
-  YOU_WIN_ROUND: 2,
-  YOU_WIN_GAME: 3,
-};
-
-
-    const boardElement = document.querySelector('.board');
-    const cells = [];
-
-    // Create the cells on the board
-    for (let i = 0; i < Board.WIDTH; i++) {
-      cells[i] = [];
-      for (let j = 0; j < Board.HEIGHT; j++) {
-        const cell = document.createElement('div');
-        cell.classList.add('cell');
-        cell.dataset.x = i;
-        cell.dataset.y = j;
-        boardElement.appendChild(cell);
-        cells[i][j] = cell;
-      }
-    }
-
-    // Initialize and start the game
-    const game = new RobotsGame();
-    game.start();
-    renderBoard();
-
-    // Add event listeners to the cells for player interaction
-    cells.forEach((row) => {
-      row.forEach((cell) => {
-        cell.addEventListener('click', () => {
-          const x = parseInt(cell.dataset.x);
-          const y = parseInt(cell.dataset.y);
-          const moveResult = game.makeMove(x, y);
-          renderBoard();
-
-          if (moveResult === MoveResult.YOU_LOSE) {
-            alert('Game over! You lost.');
-          } else if (moveResult === MoveResult.YOU_WIN_ROUND) {
-            alert('You won the round!');
-          }
-        });
-      });
-    });
-
-    // Function to render the current state of the board
-    function renderBoard() {
-      const board = game.board_;
-
-      for (let i = 0; i < Board.WIDTH; i++) {
-        for (let j = 0; j < Board.HEIGHT; j++) {
-          const cell = cells[i][j];
-          cell.className = 'cell';
-
-          switch (board.cell({ x: i, y: j })) {
-            case Occupant.HUMAN:
-              cell.classList.add('human');
-              break;
-            case Occupant.ROBOT:
-              cell.classList.add('robot');
-              break;
-            case Occupant.FIRE:
-              cell.classList.add('fire');
-              break;
-          }
-        }
-      }
-    }
-  </script>
-</body>
+      // Usage example:
+      const board = new Board();
+      console.log(board.n_robots()); // Output: 0
+    </script>
+  </body>
 </html>
