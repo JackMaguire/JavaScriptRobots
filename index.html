@@ -30,6 +30,7 @@
   <body>
     <h1>Robot Game</h1>
     <div class="board"></div>
+    <div id="tele">Safe Teleports: 0</div>
     <div id="game-container">
       <canvas id="canvas" width="1125" height="750"></canvas>
     </div>
@@ -40,6 +41,9 @@
       const humanColor_ = '#33E';
       const fireColor_ = '#333';
       const robotColor_ = '#E33';
+
+      const sleep = ms => new Promise(r => setTimeout(r, ms));
+
       class GameOverBool extends Boolean {}
 
       function nrobots_per_round(round) {
@@ -79,6 +83,14 @@
 	  constructor(x, y) {
 	      this.x = x;
 	      this.y = y;
+	  }
+
+	  toString(){
+	      return `(${this.x},${this.y})`;
+	  }
+
+	  copy() {
+	      return new Position( this.x, this.y );
 	  }
 
 	  isEqual(o) {
@@ -139,8 +151,6 @@
 	      for (let i = 0; i < Board.WIDTH; i++) {
 		  this.cells_[i] = new Array(Board.HEIGHT).fill(Occupant.EMPTY);
 	      }
-	      this.robot_positions_ = [];
-	      this.human_position_ = STARTING_POSITION;
 	      this.init_board( round );
 	  }
 
@@ -155,7 +165,7 @@
 	      this.clear_board();
 
 	      // HUMAN
-	      this.human_position_ = STARTING_POSITION;
+	      this.human_position_ = STARTING_POSITION.copy();
 	      this.setCell(this.human_position_, Occupant.HUMAN );
 
 	      // ROBOTS
@@ -182,7 +192,7 @@
 		  for (let w = 0; w < Board.WIDTH; ++w) {
 		      for (let h = 0; h < Board.HEIGHT; ++h) {
 			  let p = { x: w, y: h };
-			  if (!isSamePosition(p, STARTING_POSITION)) {
+			  if ( p.x != STARTING_POSITION.x || p.y != STARTING_POSITION.y ) {
 			      empty_positions.push(p);
 			  }
 		      }
@@ -213,10 +223,6 @@
 	      return this.robot_positions_.length;
 	  }
 
-	  n_robots_uint() {
-	      return this.robot_positions_.length;
-	  }
-
 	  human_position() {
 	      return this.human_position_;
 	  }
@@ -241,7 +247,7 @@
 	      this.setCell(this.human_position_, Occupant.EMPTY);
 
 	      if (safe) {
-		  this.human_position_ = this.find_open_space();
+		  this.human_position_ = this.find_open_space().copy(); //copy may not be needed here
 	      } else {
 		  this.human_position_.x = this.random_x();
 		  this.human_position_.y = this.random_y();
@@ -415,7 +421,7 @@
 		  }
 	      }
 
-	      for (const robotIndex of Array.from(robots_to_delete).reverse()) {
+	      for (const robotIndex of Array.from(robots_to_delete).sort(function(a, b){return a - b}).reverse()) {
 		  this.robot_positions_.splice(robotIndex, 1);
 	      }
 
@@ -429,7 +435,10 @@
 
       }
 
-      function drawBoard( board ) {
+      function drawBoard( board, tele ) {
+	  const teleElement = document.getElementById('tele');
+	  teleElement.textContent = `Safe Teleports: ${tele}`;
+
 	  ctx_.clearRect(0, 0, canvas_.width, canvas_.height);
 	  grid_size = 25;
 	  grid_size_over_2 = grid_size/2;
@@ -486,11 +495,12 @@
 
       // Usage example:
       let round_ = 1;
+      let tele_ = 0;
       const board_ = new Board( round_ );
       console.log(board_.n_robots());
-      drawBoard( board_ );
+      drawBoard( board_, tele_ );
 
-      document.addEventListener('keydown', (event) => {
+      async function keydownevent( event ){
 	  const key = event.key.toLowerCase();
 	  let nextPosition;
 
@@ -528,8 +538,24 @@
 	      outcome = board_.move_human( 1, -1 );
               break;
           case 't':
-	      outcome = board_.teleport( false );
+	      if ( tele_ > 0 ){
+		  outcome = board_.teleport( true );
+		  --tele_;
+	      } else {
+		  outcome = board_.teleport( false );
+	      }
+	      console.log( `${board_.human_position_}` );
               break;
+	  case '/':
+	      n_robots = board_.n_robots();
+	      outcome = board_.move_human( 0, 0 );
+	      while( outcome === MoveResult.CONTINUE ){
+		  drawBoard( board_, tele_ );
+		  await sleep( 100 )
+		  outcome = board_.move_human( 0, 0 );
+	      }
+	      tele_ += n_robots;
+	      break;
           default:
               return;
 	  }
@@ -552,8 +578,9 @@
 	      break;
 	  }
 
-	  drawBoard( board_ );
-      });
+	  drawBoard( board_, tele_ );
+      }
+      document.addEventListener('keydown', keydownevent );
 
     </script>
   </body>
