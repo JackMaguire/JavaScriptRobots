@@ -1,4 +1,4 @@
-<!DOCTYPE html>A
+<!DOCTYPE html>
 <html>
   <head>
     <title>Robot Game</title>
@@ -32,12 +32,13 @@
     <div class="board"></div>
     <div id="tele">Safe Teleports: 0</div>
     <div id="game-container">
-      <canvas id="canvas" width="1125" height="750"></canvas>
+      <canvas id="canvas" width="1125" height="800"></canvas>
     </div>
     <script>
       const canvas_ = document.getElementById('canvas');
       const ctx_ = canvas_.getContext('2d');
       const gridColor_ = '#EEE';
+      const safeHumanColor_ = '#BBF';
       const humanColor_ = '#33E';
       const fireColor_ = '#333';
       const robotColor_ = '#E33';
@@ -160,6 +161,34 @@
 	      }
 	  }
 
+	  init_from_source( src ){
+	      // RESET
+	      this.clear_board();
+
+	      // HUMAN
+	      this.human_position_ = src.human_position_.copy();
+	      this.setCell(this.human_position_, Occupant.HUMAN );
+
+	      // ROBOTS
+	      this.robot_positions_ = []
+	      for (let i = 0; i < src.robot_positions_.length; i++){
+		  try{
+		      this.robot_positions_.push( src.robot_positions_[i].copy() )
+		  } catch (e){
+		      console.log(`${src.robot_positions_[i]}`);
+		      this.robot_positions_.push( src.robot_positions_[i].copy() )
+		  }
+	      }
+
+	      // CELLS
+	      for (let w = 0; w < Board.WIDTH; w++) {
+		  for (let h = 0; h < Board.HEIGHT; h++) {
+		      this.cells_[w][h] = src.cells_[w][h]
+		  }
+	      }
+
+	  }
+
 	  init_board(round) {
 	      // RESET
 	      this.clear_board();
@@ -169,7 +198,6 @@
 	      this.setCell(this.human_position_, Occupant.HUMAN );
 
 	      // ROBOTS
-	      //this.robot_positions_.resize(nrobots_per_round(round));
 	      this.robot_positions_ = []
 	      for (let i = 0; i < nrobots_per_round(round); i++){
 		  this.robot_positions_.push( new Position(0,0) )
@@ -191,7 +219,7 @@
 		  let empty_positions = [];
 		  for (let w = 0; w < Board.WIDTH; ++w) {
 		      for (let h = 0; h < Board.HEIGHT; ++h) {
-			  let p = { x: w, y: h };
+			  let p = new Position(w, h)
 			  if ( p.x != STARTING_POSITION.x || p.y != STARTING_POSITION.y ) {
 			      empty_positions.push(p);
 			  }
@@ -278,15 +306,16 @@
 	      return this.move_robots_1_step();
 	  }
 
-	  /*
 	  move_is_safe(dx, dy) {
-	      const copy = new Board();
+	      const copy = new Board()
+	      copy.init_from_source( this )
 	      const result = copy.move_human(dx, dy);
 	      return result !== MoveResult.YOU_LOSE;
 	  }
 
 	  move_is_cascade_safe(dx, dy) {
 	      const copy = new Board();
+	      copy.init_from_source( this )
 	      let result = copy.move_human(dx, dy);
 	      while (result === MoveResult.CONTINUE) {
 		  result = copy.move_human(0, 0);
@@ -294,16 +323,17 @@
 	      return result !== MoveResult.YOU_LOSE;
 	  }
 
-	  move_is_cascade_safe(dx, dy, nremaining) {
+	  /*move_is_cascade_safe(dx, dy, nremaining) {
 	      const copy = new Board();
+	      copy.init_from_source( this )
 	      let result = copy.move_human(dx, dy);
 	      while (result === MoveResult.CONTINUE) {
 		  result = copy.move_human(0, 0);
 	      }
 	      nremaining = copy.n_robots();
 	      return result !== MoveResult.YOU_LOSE;
-	  }
-	  */
+	  }*/
+
 	  static position_is_in_bounds(p) {
 	      return (
 		  p.x >= 0 &&
@@ -435,7 +465,7 @@
 
       }
 
-      function drawBoard( board, tele ) {
+      function drawBoard( board, tele, check4safety ) {
 	  const teleElement = document.getElementById('tele');
 	  teleElement.textContent = `Safe Teleports: ${tele}`;
 
@@ -478,6 +508,11 @@
 			  break;
 		      case Occupant.HUMAN:
 			  ctx_.fillStyle = humanColor_;
+			  if ( check4safety ){
+			      if( board_.move_is_cascade_safe(0,0) ) {
+				  ctx_.fillStyle = safeHumanColor_;
+			      }			      
+			  }
 			  draw_elements();
 			  break;
 		      case Occupant.FIRE:
@@ -498,7 +533,7 @@
       let tele_ = 0;
       const board_ = new Board( round_ );
       console.log(board_.n_robots());
-      drawBoard( board_, tele_ );
+      drawBoard( board_, tele_, true );
 
       async function keydownevent( event ){
 	  const key = event.key.toLowerCase();
@@ -507,34 +542,43 @@
 	  outcome = MoveResult.CONTINUE;
 	  switch (key) {
           case 'q':
+	      if ( !board_.move_is_safe(-1, 1) ) return;
 	      outcome = board_.move_human( -1, 1 );
               break;
           case 'arrowup':
           case 'w':
+	      if ( !board_.move_is_safe(0, 1) ) return;
 	      outcome = board_.move_human( 0, 1 );
               break;
           case 'e':
+	      if ( !board_.move_is_safe(1, 1) ) return;
 	      outcome = board_.move_human( 1, 1 );
               break;
           case 'arrowleft':
           case 'a':
+	      if ( !board_.move_is_safe(-1, 0) ) return;
 	      outcome = board_.move_human( -1, 0 );
               break;
           case 's':
+	      if ( !board_.move_is_safe(0, 0) ) return;
 	      outcome = board_.move_human( 0, 0 );
               break;
           case 'arrowright':
           case 'd':
+	      if ( !board_.move_is_safe(1, 0) ) return;
 	      outcome = board_.move_human( 1, 0 );
               break;
           case 'z':
+	      if ( !board_.move_is_safe(-1, -1) ) return;
 	      outcome = board_.move_human( -1, -1 );
               break;
           case 'arrowdown':
           case 'x':
+	      if ( !board_.move_is_safe(0, -1) ) return;
 	      outcome = board_.move_human( 0, -1 );
               break;
           case 'c':
+	      if ( !board_.move_is_safe(1, -1) ) return;
 	      outcome = board_.move_human( 1, -1 );
               break;
           case 't':
@@ -547,14 +591,16 @@
 	      console.log( `${board_.human_position_}` );
               break;
 	  case '/':
+	      if( ! board_.move_is_cascade_safe(0,0) ) return;
 	      n_robots = board_.n_robots();
 	      outcome = board_.move_human( 0, 0 );
 	      while( outcome === MoveResult.CONTINUE ){
-		  drawBoard( board_, tele_ );
+		  drawBoard( board_, tele_, false );
 		  await sleep( 100 )
 		  outcome = board_.move_human( 0, 0 );
 	      }
 	      tele_ += n_robots;
+	      if ( tele_ > 10 ) tele_ = 10;
 	      break;
           default:
               return;
@@ -571,14 +617,14 @@
 	      if ( round_ < MAX_N_ROUNDS ){
 		  ++round_;
 		  board_.init_board( round_ );
+		  break;
 	      }
-	      break;
 	  case MoveResult.YOU_WIN_GAME:
 	      alert( "YOU WIN" );
 	      break;
 	  }
 
-	  drawBoard( board_, tele_ );
+	  drawBoard( board_, tele_, true );
       }
       document.addEventListener('keydown', keydownevent );
 
