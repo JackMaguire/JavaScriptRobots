@@ -272,6 +272,7 @@
 	      return this.move_robots_1_step();
 	  }
 
+	  /*
 	  move_is_safe(dx, dy) {
 	      const copy = new Board();
 	      const result = copy.move_human(dx, dy);
@@ -296,7 +297,7 @@
 	      nremaining = copy.n_robots();
 	      return result !== MoveResult.YOU_LOSE;
 	  }
-
+	  */
 	  static position_is_in_bounds(p) {
 	      return (
 		  p.x >= 0 &&
@@ -414,7 +415,7 @@
 		  }
 	      }
 
-	      for (const robotIndex of robots_to_delete) {
+	      for (const robotIndex of Array.from(robots_to_delete).reverse()) {
 		  this.robot_positions_.splice(robotIndex, 1);
 	      }
 
