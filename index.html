@@ -474,55 +474,66 @@
 	  grid_size_over_2 = grid_size/2;
 	  twopi = 2*Math.PI;
 
-	  // GRID
-	  {
-	      use_c1 = false;
-	      for( let i = 0; i < Board.WIDTH; ++i ){
-		  for( let j = 0; j < Board.HEIGHT; ++j ){
-		      use_c1 = !use_c1;
-		      if( ! use_c1 ){
-			  ctx_.fillStyle = gridColor_;
-			  x = i*grid_size
-			  y = (Board.HEIGHT-j)*grid_size
-			  ctx_.fillRect(x, y, grid_size, grid_size)
-		      }
+	  use_c1 = false;
+	  for( let i = 0; i < Board.WIDTH; ++i ){
+	      for( let j = 0; j < Board.HEIGHT; ++j ){
+		  use_c1 = !use_c1;
+		  if( ! use_c1 ){
+		      ctx_.fillStyle = gridColor_;
+		      x = i*grid_size
+		      y = (Board.HEIGHT-j)*grid_size
+		      ctx_.fillRect(x, y, grid_size, grid_size)
+		  }
 
-		      function draw_elements(){
-			  x = i * grid_size + grid_size_over_2;
-			  y = (Board.HEIGHT-j) * grid_size + grid_size_over_2;
+		  function draw_elements(){
+		      x = i * grid_size + grid_size_over_2;
+		      y = (Board.HEIGHT-j) * grid_size + grid_size_over_2;
+		      ctx_.beginPath();
+		      ctx_.arc( x, y, grid_size_over_2, twopi, false );
+		      ctx_.fill();
+		      ctx_.stroke();
+		  }
+
+		  //Draw Element
+		  switch (board.cellxy(i,j)) {
+		  case Occupant.EMPTY:
+		      break;
+		  case Occupant.OOB:
+		      break;
+		  case Occupant.ROBOT:
+		      ctx_.fillStyle = robotColor_;
+		      draw_elements();
+		      break;
+		  case Occupant.HUMAN:
+		      ctx_.fillStyle = humanColor_;
+		      if ( check4safety ){
+			  if( board.move_is_cascade_safe(0,0) ) {
+			      ctx_.fillStyle = safeHumanColor_;
+			  }			      
+		      }
+		      draw_elements();
+		      break;
+		  case Occupant.FIRE:
+		      ctx_.fillStyle = fireColor_;
+		      draw_elements();
+		      break;
+		  }
+		  
+	      }
+	      use_c1 = !use_c1;
+	  }
+
+	  if ( check4safety ){
+	      for( let dx = -1; dx < 2; ++dx ){
+		  for( let dy = -1; dy < 2; ++dy ){
+		      if( board.move_is_cascade_safe(dx,dy) ){
+			  x = (board.human_position_.x+dx)*grid_size
+			  y = (Board.HEIGHT-(board.human_position_.y+dy))*grid_size
 			  ctx_.beginPath();
-			  ctx_.arc( x, y, grid_size_over_2, twopi, false );
-			  ctx_.fill();
+			  ctx_.rect(x,y,grid_size,grid_size);
 			  ctx_.stroke();
 		      }
-
-		      //Draw Element
-		      switch (board.cellxy(i,j)) {
-		      case Occupant.EMPTY:
-			  break;
-		      case Occupant.OOB:
-			  break;
-		      case Occupant.ROBOT:
-			  ctx_.fillStyle = robotColor_;
-			  draw_elements();
-			  break;
-		      case Occupant.HUMAN:
-			  ctx_.fillStyle = humanColor_;
-			  if ( check4safety ){
-			      if( board_.move_is_cascade_safe(0,0) ) {
-				  ctx_.fillStyle = safeHumanColor_;
-			      }			      
-			  }
-			  draw_elements();
-			  break;
-		      case Occupant.FIRE:
-			  ctx_.fillStyle = fireColor_;
-			  draw_elements();
-			  break;
-		      }
-		      
 		  }
-		  use_c1 = !use_c1;
 	      }
 	  }
 
