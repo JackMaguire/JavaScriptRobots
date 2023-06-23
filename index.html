@@ -175,7 +175,7 @@
 		  try{
 		      this.robot_positions_.push( src.robot_positions_[i].copy() )
 		  } catch (e){
-		      console.log(`${src.robot_positions_[i]}`);
+		      //console.log(`${src.robot_positions_[i]}`);
 		      this.robot_positions_.push( src.robot_positions_[i].copy() )
 		  }
 	      }
@@ -236,10 +236,12 @@
 	  }
 
 	  cell(p) {
+	      if ( ! Board.position_is_in_bounds(p) ) return Occupant.OOB;
 	      return this.cells_[p.x][p.y];
 	  }
 
 	  cellxy(x,y) {
+	      if ( ! Board.position_is_in_bounds_xy(x,y) ) return Occupant.OOB;
 	      return this.cells_[x][y];
 	  }
 
@@ -324,15 +326,15 @@
 	  }
 
 	  /*move_is_cascade_safe(dx, dy, nremaining) {
-	      const copy = new Board();
-	      copy.init_from_source( this )
-	      let result = copy.move_human(dx, dy);
-	      while (result === MoveResult.CONTINUE) {
-		  result = copy.move_human(0, 0);
-	      }
-	      nremaining = copy.n_robots();
-	      return result !== MoveResult.YOU_LOSE;
-	  }*/
+	    const copy = new Board();
+	    copy.init_from_source( this )
+	    let result = copy.move_human(dx, dy);
+	    while (result === MoveResult.CONTINUE) {
+	    result = copy.move_human(0, 0);
+	    }
+	    nremaining = copy.n_robots();
+	    return result !== MoveResult.YOU_LOSE;
+	    }*/
 
 	  static position_is_in_bounds(p) {
 	      return (
@@ -343,7 +345,7 @@
 	      );
 	  }
 
-	  static position_is_in_bounds(x, y) {
+	  static position_is_in_bounds_xy(x, y) {
 	      return (
 		  x >= 0 &&
 		      x < Board.WIDTH &&
@@ -539,6 +541,191 @@
 
       }
 
+      // BEGIN RECURSION
+      class Move {
+	  constructor() {
+	      this.dx = -2;
+	      this.dy = -2;
+	  }
+
+	  nullop() {
+	      return this.dx === -2 && this.dy === -2;
+	  }
+
+	  copy() {
+	      return makeMoveObj( this.dx, this.dy );
+	  }
+
+	  set_nullop(setting) {
+	      if (setting) {
+		  this.dx = -2;
+		  this.dy = -2;
+	      }
+	  }
+
+	  toString(){
+	      return `(${this.dx},${this.dy})`;
+	  }
+
+      }
+
+      function makeMoveObj( dx, dy ){
+	  m = new Move()
+	  m.dx = dx
+	  m.dy = dy
+	  return m;
+      }
+
+      function makeMoveArray( depth ){
+	  m = []
+	  for ( let i = 0; i <= depth; ++i ){
+	      m.push( new Move() )
+	  }
+	  return m
+      }
+
+      class SearchResult {
+	  constructor() {
+	      this.moves = []
+	      this.cascade = false;
+	      this.nrobots_killed_cascading = -1;
+	  }
+
+	  is_better_than(other) {
+	      if (this.cascade) {
+		  if (other.cascade) return this.nrobots_killed_cascading > other.nrobots_killed_cascading;
+		  else return true;
+	      } else {
+		  if (other.cascade) return false;
+		  else return false;
+	      }
+	  }
+
+	  toString(){
+	      return `(${this.cascade},${this.moves})`;
+	  }
+
+      }
+
+      function cloneMoveArray( arr ){
+	  arr2 = []
+	  for ( const m of arr ){
+	      arr2.push( m.copy() );
+	  }
+	  return arr2
+      }
+
+      function recursive_search(board, min_sufficient_robots_killed, moves, min_n_robots, recursion_round, check_for_cascade, depth) {
+	  if (check_for_cascade) {
+	      if (board.move_is_cascade_safe(0, 0)) {
+		  const result = new SearchResult();
+		  console.log( JSON.stringify(result.moves) )
+		  result.moves = cloneMoveArray(moves)
+		  console.log("???")
+		  console.log( JSON.stringify(result.moves) )
+		  result.cascade = true;
+		  result.nrobots_killed_cascading = board.n_robots();
+		  return result;
+	      }
+	  }
+
+	  if (recursion_round === depth || board.n_robots() < min_n_robots) {
+	      const result = new SearchResult();
+	      result.moves = cloneMoveArray(moves);
+	      result.cascade = false;
+	      result.nrobots_killed_cascading = -1;
+	      return result;
+	  }
+
+	  var best_result = new SearchResult();
+	  const hpos = board.human_position();
+	  let min_sufficient_robots_killed_met = false;
+
+	  for (let dx = -1; dx <= 1; ++dx) {
+	      for (let dy = -1; dy <= 1; ++dy) {
+		  switch (board.cellxy(hpos.x + dx, hpos.y + dy)) {
+		  case Occupant.ROBOT:
+		  case Occupant.FIRE:
+		  case Occupant.OOB:
+		      continue;
+		  case Occupant.EMPTY:
+		  case Occupant.HUMAN:
+		      break;
+		  }
+
+		  const copy = new Board()
+		  copy.init_from_source( board )
+		  const move_result = copy.move_human(dx, dy);
+		  var result = new SearchResult();
+		  result.moves = cloneMoveArray(moves);
+
+		  switch (move_result) {
+		  case MoveResult.YOU_LOSE:
+		      continue;
+		  case MoveResult.YOU_WIN_ROUND:
+		  case MoveResult.YOU_WIN_GAME:
+		      console.log( "!!!" )
+		      result.moves.push( makeMoveObj( dx, dy ) );
+		      console.log( JSON.stringify(result.moves) )
+		      result.cascade = true;
+		      result.nrobots_killed_cascading = 0;
+		      break;
+		  case MoveResult.CONTINUE:
+		      moves.push( makeMoveObj( dx, dy ) );
+		      const inner_suff_cutoff = Math.min(min_sufficient_robots_killed, copy.n_robots());
+		      const best_subresult = recursive_search(copy, inner_suff_cutoff, moves, min_n_robots, recursion_round + 1, !(dx === 0 && dy === 0), depth);
+		      moves.pop();
+		      result = best_subresult;
+		      break;
+		  }
+
+		  if (!best_result.is_better_than(result)) {
+		      best_result = result;
+		  }
+
+		  min_sufficient_robots_killed_met = best_result.nrobots_killed_cascading >= min_sufficient_robots_killed;
+
+		  if (min_sufficient_robots_killed_met) break;
+	      }
+
+	      if (min_sufficient_robots_killed_met) break;
+	  }
+
+	  return best_result;
+      }
+
+      function recursive_search_for_cascade(board, depth, min_sufficient_robots_killed = 10, min_n_robots = 0) {
+	  var moves = [];
+	  return recursive_search(board, min_sufficient_robots_killed, moves, min_n_robots, 0, true, depth);
+      }
+
+      function run_recursive_search(board, n_tele_remaining, n_tele_desired, depth) {
+	  const min_n_robots = Math.min(n_tele_desired - n_tele_remaining, board.n_robots());
+	  const search_result = recursive_search_for_cascade(board, depth);
+
+	  if (!search_result.cascade) {
+	      return false;
+	  }
+
+	  if (search_result.nrobots_killed_cascading < min_n_robots) {
+	      return false;
+	  }
+
+	  console.log( `${search_result}` );
+	  for (const m of search_result.moves) {
+	      console.log( `${m}` );
+	      console.log( JSON.stringify(m) );
+	      console.log( `${m.dx} ${m.dy}` );
+	      if (m.nullop()) break;
+	      board.move_human(m.dx, m.dy);
+	      drawBoard( board, n_tele_remaining, false );
+	  }
+
+	  return true;
+      }
+
+      // END RECURSION
+
       // Usage example:
       let round_ = 1;
       let tele_ = 0;
@@ -613,6 +800,10 @@
 	      tele_ += n_robots;
 	      if ( tele_ > 10 ) tele_ = 10;
 	      break;
+          case '3':
+	      anythingHappened = run_recursive_search( board_, tele_, 8, 3 )
+	      if ( ! anythingHappened ) return;
+              break;
           default:
               return;
 	  }
