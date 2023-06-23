@@ -619,10 +619,7 @@
 	  if (check_for_cascade) {
 	      if (board.move_is_cascade_safe(0, 0)) {
 		  const result = new SearchResult();
-		  console.log( JSON.stringify(result.moves) )
 		  result.moves = cloneMoveArray(moves)
-		  console.log("???")
-		  console.log( JSON.stringify(result.moves) )
 		  result.cascade = true;
 		  result.nrobots_killed_cascading = board.n_robots();
 		  return result;
@@ -664,9 +661,7 @@
 		      continue;
 		  case MoveResult.YOU_WIN_ROUND:
 		  case MoveResult.YOU_WIN_GAME:
-		      console.log( "!!!" )
 		      result.moves.push( makeMoveObj( dx, dy ) );
-		      console.log( JSON.stringify(result.moves) )
 		      result.cascade = true;
 		      result.nrobots_killed_cascading = 0;
 		      break;
@@ -699,7 +694,7 @@
 	  return recursive_search(board, min_sufficient_robots_killed, moves, min_n_robots, 0, true, depth);
       }
 
-      function run_recursive_search(board, n_tele_remaining, n_tele_desired, depth) {
+      async function run_recursive_search(board, n_tele_remaining, n_tele_desired, depth) {
 	  const min_n_robots = Math.min(n_tele_desired - n_tele_remaining, board.n_robots());
 	  const search_result = recursive_search_for_cascade(board, depth);
 
@@ -711,15 +706,13 @@
 	      return false;
 	  }
 
-	  console.log( `${search_result}` );
 	  for (const m of search_result.moves) {
-	      console.log( `${m}` );
-	      console.log( JSON.stringify(m) );
-	      console.log( `${m.dx} ${m.dy}` );
 	      if (m.nullop()) break;
 	      board.move_human(m.dx, m.dy);
 	      drawBoard( board, n_tele_remaining, false );
+	      await sleep( 100 )
 	  }
+	  drawBoard( board, n_tele_remaining, true );
 
 	  return true;
       }
@@ -786,7 +779,6 @@
 	      } else {
 		  outcome = board_.teleport( false );
 	      }
-	      console.log( `${board_.human_position_}` );
               break;
 	  case '/':
 	      if( ! board_.move_is_cascade_safe(0,0) ) return;
@@ -802,6 +794,22 @@
 	      break;
           case '3':
 	      anythingHappened = run_recursive_search( board_, tele_, 8, 3 )
+	      if ( ! anythingHappened ) return;
+              break;
+          case '4':
+	      anythingHappened = run_recursive_search( board_, tele_, 8, 4 )
+	      if ( ! anythingHappened ) return;
+              break;
+          case '5':
+	      anythingHappened = run_recursive_search( board_, tele_, 8, 5 )
+	      if ( ! anythingHappened ) return;
+              break;
+          case '6':
+	      anythingHappened = run_recursive_search( board_, tele_, 8, 6 )
+	      if ( ! anythingHappened ) return;
+              break;
+          case '7':
+	      anythingHappened = run_recursive_search( board_, tele_, 8, 7 )
 	      if ( ! anythingHappened ) return;
               break;
           default:
