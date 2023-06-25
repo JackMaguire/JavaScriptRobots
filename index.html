@@ -720,8 +720,10 @@
       // END RECURSION
 
       // Usage example:
-      let round_ = 1;
+      let round_ = prompt( "Round?", 1 );
       let tele_ = 0;
+      if (round_ > tele_) tele_ = round_;
+      if (tele_ > 10) tele_ = 10;
       const board_ = new Board( round_ );
       console.log(board_.n_robots());
       drawBoard( board_, tele_, true );
