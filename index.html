@@ -714,8 +714,10 @@
 	      return false;
 	  }
 
-	  if (search_result.nrobots_killed_cascading < min_n_robots) {
-	      return false;
+          var accept = search_result.nrobots_killed_cascading >= min_n_robots;
+          if(!accept){
+		accept = confirm(`Would you accept ${board.n_robots()-search_result.nrobots_killed_cascading}?`);
+		if(!accept) return false;
 	  }
 
 	  for (const m of search_result.moves) {
