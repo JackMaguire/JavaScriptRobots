@@ -45,7 +45,8 @@
 
       // global states
       var is_computing_ = false;
-
+      var bail_on_computing_ = false;
+	    
       const sleep = ms => new Promise(r => setTimeout(r, ms));
 
       class GameOverBool extends Boolean {}
@@ -637,6 +638,14 @@
 	      return result;
 	  }
 
+	  if (bail_on_computing_) {
+	      const result = new SearchResult();
+	      result.moves = cloneMoveArray(moves)
+	      result.cascade = false;
+	      result.nrobots_killed_cascading = 0;
+	      return result;
+	  }
+	      
 	  var best_result = new SearchResult();
 	  const hpos = board.human_position();
 	  let min_sufficient_robots_killed_met = false;
@@ -716,7 +725,7 @@
 	      await sleep( 100 )
 	  }
 	  drawBoard( board, n_tele_remaining, true );
-
+          bail_on_computing_ = false;
 	  return true;
       }
 
@@ -732,10 +741,12 @@
       drawBoard( board_, tele_, true );
 
       async function keydownevent( event ){
-	  if (is_computing_) return;
-
 	  const key = event.key.toLowerCase();
-	  let nextPosition;
+	  if (key === '\''){ 
+	      bail_on_computing_ = true;
+	      return;
+	  }	
+	  if (is_computing_) return;
 
 	  outcome = MoveResult.CONTINUE;
 	  switch (key) {
