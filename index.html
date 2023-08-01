@@ -43,6 +43,9 @@
       const fireColor_ = '#333';
       const robotColor_ = '#E33';
 
+      // global states
+      var is_computing_ = false;
+
       const sleep = ms => new Promise(r => setTimeout(r, ms));
 
       class GameOverBool extends Boolean {}
@@ -729,6 +732,8 @@
       drawBoard( board_, tele_, true );
 
       async function keydownevent( event ){
+	  if (is_computing_) return;
+
 	  const key = event.key.toLowerCase();
 	  let nextPosition;
 
@@ -784,6 +789,7 @@
               break;
 	  case '/':
 	      if( ! board_.move_is_cascade_safe(0,0) ) return;
+              is_computing_ = true;
 	      n_robots = board_.n_robots();
 	      outcome = board_.move_human( 0, 0 );
 	      while( outcome === MoveResult.CONTINUE ){
@@ -793,25 +799,36 @@
 	      }
 	      tele_ += n_robots;
 	      if ( tele_ > 10 ) tele_ = 10;
+	      is_computing_ = false;
 	      break;
           case '3':
+              is_computing_ = true;
 	      anythingHappened = run_recursive_search( board_, tele_, 8, 3 )
+	      is_computing_ = false;
 	      if ( ! anythingHappened ) return;
               break;
           case '4':
+	      is_computing_ = true;
 	      anythingHappened = run_recursive_search( board_, tele_, 8, 4 )
+	      is_computing_ = false;
 	      if ( ! anythingHappened ) return;
               break;
           case '5':
+	      is_computing_ = true;
 	      anythingHappened = run_recursive_search( board_, tele_, 8, 5 )
+	      is_computing_ = false;
 	      if ( ! anythingHappened ) return;
               break;
           case '6':
+	      is_computing_ = true;
 	      anythingHappened = run_recursive_search( board_, tele_, 8, 6 )
+	      is_computing_ = false;
 	      if ( ! anythingHappened ) return;
               break;
           case '7':
+	      is_computing_ = true;
 	      anythingHappened = run_recursive_search( board_, tele_, 8, 7 )
+	      is_computing_ = false;
 	      if ( ! anythingHappened ) return;
               break;
           default:
