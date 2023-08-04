@@ -716,7 +716,8 @@
 
           var accept = search_result.nrobots_killed_cascading >= min_n_robots;
           if(!accept){
-		accept = confirm(`Would you accept ${board.n_robots()-search_result.nrobots_killed_cascading}?`);
+		n_tele_left = n_tele_remaining + search_result.nrobots_killed_cascading
+		accept = confirm(`Would you accept ${n_tele_left}?`);
 		if(!accept) return false;
 	  }
 
@@ -731,6 +732,19 @@
 	  return true;
       }
 
+      async function run_recursive_search_max_damage(board, n_tele_remaining, depth) {
+	  const search_result = recursive_search_for_cascade(board, depth);
+	  for (const m of search_result.moves) {
+	      if (m.nullop()) break;
+	      board.move_human(m.dx, m.dy);
+	      drawBoard( board, n_tele_remaining, false );
+	      await sleep( 100 )
+	  }
+	  drawBoard( board, n_tele_remaining, true );
+          bail_on_computing_ = false;
+	  return true;
+      }
+	    
       // END RECURSION
 
       // Usage example:
@@ -844,6 +858,13 @@
 	      is_computing_ = false;
 	      if ( ! anythingHappened ) return;
               break;
+          case '9':
+	      is_computing_ = true;
+	      run_recursive_search_max_damage(board_, tele_, 5)
+	      is_computing_ = false;
+	      if ( ! anythingHappened ) return;
+              break;
+			  
           default:
               return;
 	  }
