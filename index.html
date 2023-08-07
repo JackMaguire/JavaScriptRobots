@@ -621,10 +621,10 @@
       }
 
       function recursive_search(board, min_sufficient_robots_killed, moves, min_n_robots, recursion_round, check_for_cascade, depth) {
-	  console.log(`${depth},${moves}`);
+	  //console.log(`${depth},${moves}`);
 	  if (check_for_cascade) {
 	      if (board.move_is_cascade_safe(0, 0)) {
-		  console.log( `CASCADE SAFE` );
+		  //console.log( `CASCADE SAFE` );
 		  const result = new SearchResult();
 		  result.moves = cloneMoveArray(moves)
 		  result.cascade = true;
@@ -635,7 +635,7 @@
 	  }
 
 	  if (recursion_round === depth || board.n_robots() < min_n_robots || bail_on_computing_) {
-	      console.log( `BREAK: ${recursion_round === depth} ${board.n_robots() < min_n_robots} ${bail_on_computing_}` );
+	      //console.log( `BREAK: ${recursion_round === depth} ${board.n_robots() < min_n_robots} ${bail_on_computing_}` );
 	      const result = new SearchResult();
 	      result.moves = cloneMoveArray(moves);
 	      result.cascade = false;
@@ -700,7 +700,7 @@
 	      if (min_sufficient_robots_killed_met) break;
 	  }
 	  if (!any_found) {
-	      console.log( `Dead End: ${recursion_round === depth} ${board.n_robots() < min_n_robots} ${bail_on_computing_}` );
+	      //console.log( `Dead End: ${recursion_round === depth} ${board.n_robots() < min_n_robots} ${bail_on_computing_}` );
 	      const result = new SearchResult();
 	      result.moves = cloneMoveArray(moves);
 	      result.cascade = false;
@@ -709,7 +709,7 @@
 	      return result;
 	  }
 	      
-          console.log( `BEST RESULT: ${result}` );
+          //console.log( `BEST RESULT: ${result}` );
 	  return best_result;
       }
 
@@ -746,7 +746,7 @@
 
       async function run_recursive_search_max_damage(board, n_tele_remaining, depth) {
 	  const search_result = recursive_search_for_cascade(board, depth);
-	  console.log( `RESULT: ${search_result}` );
+	  //console.log( `RESULT: ${search_result}` );
 	  for (const m of search_result.moves) {
 	      if (m.nullop()) break;
 	      board.move_human(m.dx, m.dy);
