@@ -647,6 +647,7 @@
 	  var best_result = new SearchResult();
 	  const hpos = board.human_position();
 	  let min_sufficient_robots_killed_met = false;
+	  let any_found = false;
 
 	  for (let dx = -1; dx <= 1; ++dx) {
 	      for (let dy = -1; dy <= 1; ++dy) {
@@ -665,6 +666,7 @@
 		  const move_result = copy.move_human(dx, dy);
 		  var result = new SearchResult();
 		  result.moves = cloneMoveArray(moves);
+		  result.nrobots_remaining = copy.n_robots();
 
 		  switch (move_result) {
 		  case MoveResult.YOU_LOSE:
@@ -674,7 +676,7 @@
 		      result.moves.push( makeMoveObj( dx, dy ) );
 		      result.cascade = true;
 		      result.nrobots_killed_cascading = 0;
-		      result.nrobots_remaining = board.n_robots();
+		      result.nrobots_remaining = copy.n_robots();
 		      break;
 		  case MoveResult.CONTINUE:
 		      moves.push( makeMoveObj( dx, dy ) );
@@ -686,6 +688,7 @@
 		  }
 
 		  if (!best_result.is_better_than(result)) {
+		      any_found = true;
 		      best_result = result;
 		  }
 
@@ -696,6 +699,16 @@
 
 	      if (min_sufficient_robots_killed_met) break;
 	  }
+	  if (!any_found) {
+	      console.log( `Dead End: ${recursion_round === depth} ${board.n_robots() < min_n_robots} ${bail_on_computing_}` );
+	      const result = new SearchResult();
+	      result.moves = cloneMoveArray(moves);
+	      result.cascade = false;
+	      result.nrobots_killed_cascading = -1;
+	      result.nrobots_remaining = board.n_robots();
+	      return result;
+	  }
+	      
           console.log( `BEST RESULT: ${result}` );
 	  return best_result;
       }
