@@ -593,7 +593,7 @@
 	      this.moves = []
 	      this.cascade = false;
 	      this.nrobots_killed_cascading = -1;
-	      this.nrobots_remaining = 0;
+	      this.nrobots_remaining = 10000;
 	  }
 
 	  is_better_than(other) {
@@ -607,7 +607,7 @@
 	  }
 
 	  toString(){
-	      return `(${this.cascade},${this.moves})`;
+	      return `(${this.cascade},${this.moves},${this.nrobots_remaining})`;
 	  }
 
       }
