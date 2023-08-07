@@ -621,6 +621,7 @@
       }
 
       function recursive_search(board, min_sufficient_robots_killed, moves, min_n_robots, recursion_round, check_for_cascade, depth) {
+	  console.log(`${depth},${moves}`);
 	  if (check_for_cascade) {
 	      if (board.move_is_cascade_safe(0, 0)) {
 		  const result = new SearchResult();
