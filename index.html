@@ -856,7 +856,7 @@
               break;
           case '9':
 	      is_computing_ = true;
-	      run_recursive_search_max_damage(board_, tele_, 5)
+	      anythingHappened = run_recursive_search_max_damage(board_, tele_, 5)
 	      is_computing_ = false;
 	      if ( ! anythingHappened ) return;
               break;
