@@ -611,6 +611,30 @@
 
       }
 
+      class SearchResult {
+	  constructor() {
+	      this.moves = []
+	      this.cascade = false;
+	      this.nrobots_killed_cascading = -1;
+	      this.nrobots_remaining = 0;
+	  }
+
+	  is_better_than(other) {
+	      if (this.cascade) {
+		  if (other.cascade) return this.nrobots_killed_cascading > other.nrobots_killed_cascading;
+		  else return true;
+	      } else {
+		  if (other.cascade) return false;
+		  else return this.nrobots_remaining < other.nrobots_remaining;
+	      }
+	  }
+
+	  toString(){
+	      return `(${this.cascade},${this.moves})`;
+	  }
+
+      }
+	    
       function cloneMoveArray( arr ){
 	  arr2 = []
 	  for ( const m of arr ){
@@ -626,23 +650,17 @@
 		  result.moves = cloneMoveArray(moves)
 		  result.cascade = true;
 		  result.nrobots_killed_cascading = board.n_robots();
+		  result.nrobots_remaining = board.n_robots();
 		  return result;
 	      }
 	  }
 
-	  if (recursion_round === depth || board.n_robots() < min_n_robots) {
+	  if (recursion_round === depth || board.n_robots() < min_n_robots || bail_on_computing_) {
 	      const result = new SearchResult();
 	      result.moves = cloneMoveArray(moves);
 	      result.cascade = false;
 	      result.nrobots_killed_cascading = -1;
-	      return result;
-	  }
-
-	  if (bail_on_computing_) {
-	      const result = new SearchResult();
-	      result.moves = cloneMoveArray(moves)
-	      result.cascade = false;
-	      result.nrobots_killed_cascading = 0;
+	      result.nrobots_remaining = board.n_robots();
 	      return result;
 	  }
 	      
@@ -676,6 +694,7 @@
 		      result.moves.push( makeMoveObj( dx, dy ) );
 		      result.cascade = true;
 		      result.nrobots_killed_cascading = 0;
+		      result.nrobots_remaining = board.n_robots();
 		      break;
 		  case MoveResult.CONTINUE:
 		      moves.push( makeMoveObj( dx, dy ) );
