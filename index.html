@@ -624,6 +624,7 @@
 	  console.log(`${depth},${moves}`);
 	  if (check_for_cascade) {
 	      if (board.move_is_cascade_safe(0, 0)) {
+		  console.log( `CASCADE SAFE` );
 		  const result = new SearchResult();
 		  result.moves = cloneMoveArray(moves)
 		  result.cascade = true;
@@ -634,6 +635,7 @@
 	  }
 
 	  if (recursion_round === depth || board.n_robots() < min_n_robots || bail_on_computing_) {
+	      console.log( `BREAK: ${recursion_round === depth} ${board.n_robots() < min_n_robots} ${bail_on_computing_}` );
 	      const result = new SearchResult();
 	      result.moves = cloneMoveArray(moves);
 	      result.cascade = false;
@@ -694,7 +696,7 @@
 
 	      if (min_sufficient_robots_killed_met) break;
 	  }
-
+          console.log( `BEST RESULT: ${result}` );
 	  return best_result;
       }
 
