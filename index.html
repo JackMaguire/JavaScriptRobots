@@ -731,6 +731,7 @@
 
       async function run_recursive_search_max_damage(board, n_tele_remaining, depth) {
 	  const search_result = recursive_search_for_cascade(board, depth);
+	  console.log( `RESULT: ${search_result}` );
 	  for (const m of search_result.moves) {
 	      if (m.nullop()) break;
 	      board.move_human(m.dx, m.dy);
